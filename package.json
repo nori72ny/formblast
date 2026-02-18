@@ -1,0 +1,18 @@
+{
+  "name": "formblast",
+  "version": "1.0.0",
+  "description": "企業問い合わせフォーム自動送信サービス",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "npx playwright install chromium --with-deps"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "playwright-core": "^1.40.0",
+    "uuid": "^9.0.0"
+  }
+}
