@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: formblast
+    env: node
+    plan: free
+    buildCommand: npm install && npx playwright install chromium --with-deps
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PLAYWRIGHT_BROWSERS_PATH
+        value: /opt/render/project/.playwright
