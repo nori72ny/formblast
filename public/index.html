@@ -372,7 +372,12 @@ function detectPattern(url, siteName) {
 function buildMessage(patternId, descId) {
   const p = patterns[patternId];
   const desc = companyDescs[descId];
-  return p.title + '\n\n' + desc + '\n\n' + p.body;
+  // 「株式会社リロクラブと申します。」の後に1行開けて会社概要を挿入
+  const bodyWithDesc = p.body.replace(
+    '株式会社リロクラブと申します。',
+    '株式会社リロクラブと申します。\n\n' + desc
+  );
+  return p.title + '\n\n' + bodyWithDesc;
 }
 
 function updatePreview() {
@@ -520,15 +525,31 @@ async function pollJob(id) {
   renderPreviews(j);
 }
 function renderPreviews(job) {
+  const msgContent = document.getElementById('msgEdit').value;
   let h='';
   for (const p of job.previews) {
     const filled=(p.fillResults?.filled||[]);
     const nf=(p.fillResults?.notFound||[]);
-    h+=`<div class="preview-item"><div class="pitem-h"><div class="pname">${p.companyName||p.url}</div><span class="sbadge ready">解析完了</span></div>
-    <div class="pdetail">入力フィールド：${filled.map(f=>`<span class="ftag ok">✓ ${f.field}</span>`).join('')}${nf.map(f=>`<span class="ftag ng">✕ ${f}</span>`).join('')}</div></div>`;
+    h+=`<div class="preview-item">
+      <div class="pitem-h"><div class="pname">${p.companyName||p.url}</div><span class="sbadge ready">解析完了</span></div>
+      <div class="pdetail">
+        <div style="margin-bottom:8px">入力フィールド：${filled.map(f=>`<span class="ftag ok">✓ ${f.field}</span>`).join('')}${nf.map(f=>`<span class="ftag ng">✕ ${f}</span>`).join('')}</div>
+        <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+          <div style="font-size:.75rem;color:var(--accent);font-weight:700;margin-bottom:8px">📄 送信内容プレビュー</div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:.8rem;line-height:1.8;white-space:pre-wrap;color:var(--text)">${msgContent.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+        </div>
+      </div>
+    </div>`;
   }
   for (const e of job.errors) {
-    h+=`<div class="preview-item"><div class="pitem-h"><div class="pname">${e.company}</div><span class="sbadge error">エラー</span></div><div class="pdetail" style="color:var(--danger)">${e.error}</div></div>`;
+    h+=`<div class="preview-item"><div class="pitem-h"><div class="pname">${e.company}</div><span class="sbadge error">エラー</span></div>
+    <div class="pdetail">
+      <div style="color:var(--danger);margin-bottom:12px">${e.error}</div>
+      <div style="border-top:1px solid var(--border);padding-top:12px">
+        <div style="font-size:.75rem;color:var(--accent);font-weight:700;margin-bottom:8px">📄 送信予定内容</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:.8rem;line-height:1.8;white-space:pre-wrap;color:var(--text)">${msgContent.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+      </div>
+    </div></div>`;
   }
   document.getElementById('previewArea').innerHTML=h||'<p style="color:var(--muted);text-align:center;padding:20px">結果がありません</p>';
 }
