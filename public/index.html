@@ -4,750 +4,211 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>FormBlast — 営業フォーム自動送信</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0a0a0f;
-    --surface: #12121a;
-    --surface2: #1a1a26;
-    --border: rgba(255,255,255,0.07);
-    --accent: #4f7cff;
-    --accent2: #a259ff;
-    --success: #22d3a0;
-    --warning: #f5a623;
-    --danger: #ff4f6e;
-    --text: #e8e8f0;
-    --text-muted: #6b6b85;
-    --glow: 0 0 30px rgba(79,124,255,0.15);
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Noto Sans JP', sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* ── 背景エフェクト ── */
-  body::before {
-    content: '';
-    position: fixed;
-    top: -30%;
-    left: -10%;
-    width: 60%;
-    height: 60%;
-    background: radial-gradient(ellipse, rgba(79,124,255,0.08) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-  }
-  body::after {
-    content: '';
-    position: fixed;
-    bottom: -20%;
-    right: -10%;
-    width: 50%;
-    height: 50%;
-    background: radial-gradient(ellipse, rgba(162,89,255,0.07) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  /* ── ヘッダー ── */
-  header {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    backdrop-filter: blur(20px);
-    background: rgba(10,10,15,0.85);
-    border-bottom: 1px solid var(--border);
-    padding: 14px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .logo {
-    font-family: 'Syne', sans-serif;
-    font-weight: 800;
-    font-size: 1.3rem;
-    letter-spacing: -0.02em;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  .status-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--text-muted);
-    display: inline-block;
-    margin-right: 6px;
-    transition: all 0.3s;
-  }
-  .status-dot.online { background: var(--success); box-shadow: 0 0 6px var(--success); }
-
-  /* ── レイアウト ── */
-  .container {
-    position: relative;
-    z-index: 1;
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 24px 16px 60px;
-  }
-
-  /* ── ステップナビ ── */
-  .steps {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 28px;
-    background: var(--surface);
-    border-radius: 14px;
-    padding: 6px;
-    border: 1px solid var(--border);
-  }
-
-  .step-btn {
-    flex: 1;
-    padding: 10px 6px;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    font-family: 'Noto Sans JP', sans-serif;
-    font-size: 0.72rem;
-    font-weight: 500;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.25s;
-    text-align: center;
-    white-space: nowrap;
-  }
-
-  .step-btn.active {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: #fff;
-    font-weight: 700;
-    box-shadow: 0 2px 12px rgba(79,124,255,0.3);
-  }
-
-  .step-btn.done { color: var(--success); }
-
-  /* ── カード ── */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 24px;
-    margin-bottom: 16px;
-    transition: border-color 0.3s;
-  }
-  .card:hover { border-color: rgba(79,124,255,0.2); }
-
-  .card-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 1rem;
-    font-weight: 700;
-    margin-bottom: 18px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 26px; height: 26px;
-    border-radius: 8px;
-    font-size: 0.75rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: #fff;
-    flex-shrink: 0;
-  }
-
-  /* ── フォーム部品 ── */
-  .form-group {
-    margin-bottom: 14px;
-  }
-
-  label {
-    display: block;
-    font-size: 0.78rem;
-    color: var(--text-muted);
-    margin-bottom: 6px;
-    font-weight: 500;
-  }
-
-  input[type="text"],
-  input[type="email"],
-  input[type="tel"],
-  input[type="url"],
-  textarea {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 12px 14px;
-    color: var(--text);
-    font-family: 'Noto Sans JP', sans-serif;
-    font-size: 0.92rem;
-    outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    -webkit-appearance: none;
-  }
-
-  input:focus, textarea:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(79,124,255,0.1);
-  }
-
-  textarea { resize: vertical; min-height: 100px; line-height: 1.6; }
-
-  /* ── 企業カード ── */
-  .company-list { display: flex; flex-direction: column; gap: 12px; }
-
-  .company-card {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 16px;
-    position: relative;
-    transition: all 0.2s;
-  }
-
-  .company-card.selected {
-    border-color: var(--accent);
-    background: rgba(79,124,255,0.05);
-  }
-
-  .company-card-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
-  }
-
-  .company-num {
-    width: 28px; height: 28px;
-    border-radius: 8px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Syne', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--text-muted);
-    flex-shrink: 0;
-  }
-
-  .company-name-display {
-    font-weight: 600;
-    font-size: 0.9rem;
-    flex: 1;
-  }
-
-  .remove-btn {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    font-size: 1.1rem;
-    padding: 4px;
-    border-radius: 6px;
-    transition: color 0.2s;
-  }
-  .remove-btn:hover { color: var(--danger); }
-
-  .company-fields { display: flex; flex-direction: column; gap: 10px; }
-
-  /* ── テンプレート選択 ── */
-  .template-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .template-card {
-    background: var(--surface2);
-    border: 1.5px solid var(--border);
-    border-radius: 14px;
-    padding: 14px 16px;
-    cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
-  }
-
-  .template-card:hover {
-    border-color: rgba(79,124,255,0.3);
-    transform: translateX(3px);
-  }
-
-  .template-card.selected {
-    border-color: var(--accent);
-    background: rgba(79,124,255,0.06);
-  }
-
-  .template-card.selected::before {
-    content: '✓';
-    position: absolute;
-    right: 14px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--accent);
-    font-weight: 700;
-    font-size: 1rem;
-  }
-
-  .template-title {
-    font-weight: 700;
-    font-size: 0.88rem;
-    margin-bottom: 4px;
-  }
-
-  .template-preview {
-    font-size: 0.77rem;
-    color: var(--text-muted);
-    line-height: 1.5;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
-
-  /* ── ボタン ── */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 14px 24px;
-    border: none;
-    border-radius: 12px;
-    font-family: 'Noto Sans JP', sans-serif;
-    font-weight: 700;
-    font-size: 0.92rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-decoration: none;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .btn-primary {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: #fff;
-    box-shadow: 0 4px 20px rgba(79,124,255,0.3);
-  }
-  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(79,124,255,0.4); }
-  .btn-primary:active { transform: translateY(0); }
-
-  .btn-secondary {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-  }
-  .btn-secondary:hover { border-color: var(--accent); }
-
-  .btn-success {
-    background: linear-gradient(135deg, var(--success), #0ea676);
-    color: #fff;
-    box-shadow: 0 4px 20px rgba(34,211,160,0.25);
-  }
-
-  .btn-danger {
-    background: linear-gradient(135deg, var(--danger), #c9304c);
-    color: #fff;
-  }
-
-  .btn-sm { padding: 8px 14px; font-size: 0.82rem; }
-
-  .btn-block { width: 100%; }
-
-  .btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    transform: none !important;
-  }
-
-  /* ── 追加ボタン ── */
-  .add-company-btn {
-    width: 100%;
-    padding: 14px;
-    background: transparent;
-    border: 1.5px dashed rgba(79,124,255,0.3);
-    border-radius: 16px;
-    color: var(--accent);
-    font-family: 'Noto Sans JP', sans-serif;
-    font-size: 0.88rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-  .add-company-btn:hover {
-    background: rgba(79,124,255,0.05);
-    border-color: var(--accent);
-  }
-
-  /* ── アクションバー ── */
-  .action-bar {
-    display: flex;
-    gap: 10px;
-    margin-top: 20px;
-  }
-  .action-bar .btn { flex: 1; }
-
-  /* ── プレビューエリア ── */
-  .preview-list { display: flex; flex-direction: column; gap: 16px; }
-
-  .preview-item {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    overflow: hidden;
-  }
-
-  .preview-item-header {
-    padding: 14px 16px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border-bottom: 1px solid var(--border);
-    background: rgba(255,255,255,0.02);
-  }
-
-  .preview-company-name {
-    font-weight: 700;
-    font-size: 0.9rem;
-    flex: 1;
-  }
-
-  .status-badge {
-    font-size: 0.72rem;
-    font-weight: 700;
-    padding: 4px 10px;
-    border-radius: 20px;
-  }
-  .status-badge.loading { background: rgba(245,166,35,0.15); color: var(--warning); }
-  .status-badge.ready { background: rgba(34,211,160,0.15); color: var(--success); }
-  .status-badge.error { background: rgba(255,79,110,0.15); color: var(--danger); }
-  .status-badge.submitted { background: rgba(34,211,160,0.2); color: var(--success); }
-
-  .preview-screenshot {
-    width: 100%;
-    max-height: 280px;
-    object-fit: cover;
-    object-position: top;
-    display: block;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .preview-details {
-    padding: 12px 16px;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-  }
-
-  .fill-result {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 8px;
-  }
-
-  .fill-tag {
-    padding: 3px 9px;
-    border-radius: 6px;
-    font-size: 0.72rem;
-    font-weight: 600;
-  }
-  .fill-tag.ok { background: rgba(34,211,160,0.12); color: var(--success); }
-  .fill-tag.ng { background: rgba(255,79,110,0.12); color: var(--danger); }
-
-  /* ── ローディング ── */
-  .loading-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 999;
-    background: rgba(10,10,15,0.85);
-    backdrop-filter: blur(8px);
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 20px;
-  }
-  .loading-overlay.active { display: flex; }
-
-  .spinner {
-    width: 48px; height: 48px;
-    border: 3px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .loading-text {
-    font-family: 'Syne', sans-serif;
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--text);
-  }
-
-  .loading-sub {
-    font-size: 0.82rem;
-    color: var(--text-muted);
-    text-align: center;
-    max-width: 260px;
-  }
-
-  /* ── トースト ── */
-  .toast-container {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    align-items: center;
-    width: 90%;
-    max-width: 400px;
-  }
-
-  .toast {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 12px 18px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-    animation: slideUp 0.3s ease;
-    width: 100%;
-    text-align: center;
-  }
-  .toast.success { border-color: var(--success); color: var(--success); }
-  .toast.error { border-color: var(--danger); color: var(--danger); }
-  .toast.info { border-color: var(--accent); color: var(--accent); }
-
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  /* ── 確認モーダル ── */
-  .modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 998;
-    background: rgba(10,10,15,0.9);
-    backdrop-filter: blur(10px);
-    align-items: flex-end;
-    justify-content: center;
-    padding: 20px;
-  }
-  .modal.active { display: flex; }
-
-  .modal-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 24px 24px 0 0;
-    padding: 28px 24px;
-    width: 100%;
-    max-width: 480px;
-    animation: slideUp 0.3s ease;
-  }
-
-  .modal-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 1.2rem;
-    font-weight: 800;
-    margin-bottom: 12px;
-  }
-
-  .modal-body {
-    font-size: 0.88rem;
-    color: var(--text-muted);
-    line-height: 1.6;
-    margin-bottom: 24px;
-  }
-
-  .modal-actions { display: flex; gap: 10px; }
-
-  /* ── セクション表示切替 ── */
-  .section { display: none; }
-  .section.active { display: block; }
-
-  /* ── レスポンシブ ── */
-  @media (min-width: 600px) {
-    .template-grid { display: grid; grid-template-columns: 1fr 1fr; }
-    .company-fields { display: grid; grid-template-columns: 1fr 1fr; }
-    .modal { align-items: center; }
-    .modal-box { border-radius: 24px; }
-    .container { padding: 32px 24px 80px; }
-  }
-
-  /* ── テキストエリアフルサイズ用 ── */
-  .full-width { grid-column: 1 / -1; }
-
-  /* ── 送信完了 ── */
-  .result-summary {
-    text-align: center;
-    padding: 40px 20px;
-  }
-  .result-icon {
-    font-size: 3.5rem;
-    margin-bottom: 16px;
-  }
-  .result-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 1.5rem;
-    font-weight: 800;
-    margin-bottom: 8px;
-  }
-  .result-sub { color: var(--text-muted); font-size: 0.88rem; }
-
-  .server-warning {
-    background: rgba(245,166,35,0.08);
-    border: 1px solid rgba(245,166,35,0.2);
-    border-radius: 12px;
-    padding: 12px 16px;
-    font-size: 0.8rem;
-    color: var(--warning);
-    margin-bottom: 20px;
-    line-height: 1.6;
-  }
+:root{--bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a26;--border:rgba(255,255,255,0.07);--accent:#4f7cff;--accent2:#a259ff;--success:#22d3a0;--warning:#f5a623;--danger:#ff4f6e;--text:#e8e8f0;--muted:#6b6b85}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;top:-30%;left:-10%;width:60%;height:60%;background:radial-gradient(ellipse,rgba(79,124,255,0.08) 0%,transparent 70%);pointer-events:none;z-index:0}
+header{position:sticky;top:0;z-index:100;backdrop-filter:blur(20px);background:rgba(10,10,15,0.85);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.3rem;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sdot{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;margin-right:6px;transition:all .3s}
+.sdot.on{background:var(--success);box-shadow:0 0 6px var(--success)}
+.container{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:24px 16px 60px}
+.steps{display:flex;gap:4px;margin-bottom:28px;background:var(--surface);border-radius:14px;padding:6px;border:1px solid var(--border)}
+.sbtn{flex:1;padding:10px 6px;border:none;background:transparent;color:var(--muted);font-family:'Noto Sans JP',sans-serif;font-size:0.72rem;font-weight:500;border-radius:10px;cursor:pointer;transition:all .25s;white-space:nowrap}
+.sbtn.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:700;box-shadow:0 2px 12px rgba(79,124,255,0.3)}
+.sbtn.done{color:var(--success)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:16px}
+.card:hover{border-color:rgba(79,124,255,0.2)}
+.ctitle{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.badge{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;font-size:.75rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;flex-shrink:0}
+.fg{margin-bottom:14px}
+label{display:block;font-size:.78rem;color:var(--muted);margin-bottom:6px;font-weight:500}
+input[type=text],input[type=email],input[type=tel],input[type=url],textarea,select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:.92rem;outline:none;transition:border-color .2s;-webkit-appearance:none}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,124,255,0.1)}
+textarea{resize:vertical;min-height:120px;line-height:1.6}
+select option{background:var(--surface2);color:var(--text)}
+.company-list{display:flex;flex-direction:column;gap:12px}
+.ccard{background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:16px}
+.ccard-h{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.cnum{width:28px;height:28px;border-radius:8px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:.8rem;font-weight:700;color:var(--muted);flex-shrink:0}
+.cname{font-weight:600;font-size:.9rem;flex:1}
+.rbtn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:4px;border-radius:6px;transition:color .2s}
+.rbtn:hover{color:var(--danger)}
+.cfields{display:flex;flex-direction:column;gap:10px}
+.ai-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(79,124,255,0.1);border:1px solid rgba(79,124,255,0.2);border-radius:20px;font-size:.72rem;color:var(--accent);font-weight:600;margin-top:8px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 24px;border:none;border-radius:12px;font-family:'Noto Sans JP',sans-serif;font-weight:700;font-size:.92rem;cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent}
+.btn-p{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 4px 20px rgba(79,124,255,0.3)}
+.btn-p:hover{transform:translateY(-1px)}
+.btn-s{background:var(--surface2);border:1px solid var(--border);color:var(--text)}
+.btn-s:hover{border-color:var(--accent)}
+.btn-ok{background:linear-gradient(135deg,var(--success),#0ea676);color:#fff;box-shadow:0 4px 20px rgba(34,211,160,0.25)}
+.btn-d{background:linear-gradient(135deg,var(--danger),#c9304c);color:#fff}
+.btn-sm{padding:8px 14px;font-size:.82rem}
+.btn-bl{width:100%}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+.add-btn{width:100%;padding:14px;background:transparent;border:1.5px dashed rgba(79,124,255,0.3);border-radius:16px;color:var(--accent);font-family:'Noto Sans JP',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px}
+.add-btn:hover{background:rgba(79,124,255,0.05);border-color:var(--accent)}
+.abar{display:flex;gap:10px;margin-top:20px}
+.abar .btn{flex:1}
+.tcard{background:var(--surface2);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;cursor:pointer;transition:all .2s;position:relative;margin-bottom:10px}
+.tcard:hover{border-color:rgba(79,124,255,0.3);transform:translateX(3px)}
+.tcard.sel{border-color:var(--accent);background:rgba(79,124,255,0.06)}
+.tcard.sel::before{content:'✓';position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--accent);font-weight:700}
+.tcard.auto-sel{border-color:var(--success);background:rgba(34,211,160,0.06)}
+.tcard.auto-sel::before{content:'🤖';position:absolute;right:14px;top:50%;transform:translateY(-50%)}
+.ttitle{font-weight:700;font-size:.88rem;margin-bottom:4px}
+.tprev{font-size:.77rem;color:var(--muted);line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.edit-area{margin-top:18px}
+.preview-item{background:var(--surface2);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:16px}
+.pitem-h{padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.pname{font-weight:700;font-size:.9rem;flex:1}
+.sbadge{font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:20px}
+.sbadge.ready{background:rgba(34,211,160,0.15);color:var(--success)}
+.sbadge.error{background:rgba(255,79,110,0.15);color:var(--danger)}
+.sbadge.submitted{background:rgba(34,211,160,0.2);color:var(--success)}
+.pdetail{padding:12px 16px;font-size:.8rem;color:var(--muted)}
+.ftag{padding:3px 9px;border-radius:6px;font-size:.72rem;font-weight:600;display:inline-block;margin:2px}
+.ftag.ok{background:rgba(34,211,160,0.12);color:var(--success)}
+.ftag.ng{background:rgba(255,79,110,0.12);color:var(--danger)}
+.loading-overlay{display:none;position:fixed;inset:0;z-index:999;background:rgba(10,10,15,0.85);backdrop-filter:blur(8px);align-items:center;justify-content:center;flex-direction:column;gap:20px}
+.loading-overlay.active{display:flex}
+.spinner{width:48px;height:48px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ltext{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700}
+.lsub{font-size:.82rem;color:var(--muted);text-align:center;max-width:260px}
+.toast-c{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:1000;display:flex;flex-direction:column;gap:10px;align-items:center;width:90%;max-width:400px}
+.toast{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 18px;font-size:.85rem;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);animation:slideUp .3s ease;width:100%;text-align:center}
+.toast.success{border-color:var(--success);color:var(--success)}
+.toast.error{border-color:var(--danger);color:var(--danger)}
+.toast.info{border-color:var(--accent);color:var(--accent)}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.modal{display:none;position:fixed;inset:0;z-index:998;background:rgba(10,10,15,0.9);backdrop-filter:blur(10px);align-items:flex-end;justify-content:center;padding:20px}
+.modal.active{display:flex}
+.mbox{background:var(--surface);border:1px solid var(--border);border-radius:24px 24px 0 0;padding:28px 24px;width:100%;max-width:480px;animation:slideUp .3s ease}
+.mtitle{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;margin-bottom:12px}
+.mbody{font-size:.88rem;color:var(--muted);line-height:1.6;margin-bottom:24px}
+.mactions{display:flex;gap:10px}
+.section{display:none}
+.section.active{display:block}
+.result-summary{text-align:center;padding:40px 20px}
+.result-icon{font-size:3.5rem;margin-bottom:16px}
+.result-title{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;margin-bottom:8px}
+.result-sub{color:var(--muted);font-size:.88rem}
+.pattern-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.pattern-chip{padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:var(--surface2);color:var(--muted);transition:all .2s}
+.pattern-chip.sel{border-color:var(--accent);background:rgba(79,124,255,0.1);color:var(--accent)}
+.pattern-chip.auto{border-color:var(--success);background:rgba(34,211,160,0.1);color:var(--success)}
+.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
+@media(min-width:600px){.cfields{display:grid;grid-template-columns:1fr 1fr}.modal{align-items:center}.mbox{border-radius:24px}.container{padding:32px 24px 80px}}
 </style>
 </head>
 <body>
-
 <header>
   <div class="logo">⚡ FormBlast</div>
-  <div style="display:flex;align-items:center;font-size:0.78rem;color:var(--text-muted)">
-    <span class="status-dot" id="statusDot"></span>
-    <span id="statusText">未接続</span>
+  <div style="display:flex;align-items:center;font-size:.78rem;color:var(--muted)">
+    <span class="sdot" id="sdot"></span><span id="stxt">未接続</span>
   </div>
 </header>
-
 <div class="container">
-
-  <!-- ステップナビ -->
   <div class="steps">
-    <button class="step-btn active" onclick="goToStep(1)" id="stepBtn1">① 送信者情報</button>
-    <button class="step-btn" onclick="goToStep(2)" id="stepBtn2">② 企業設定</button>
-    <button class="step-btn" onclick="goToStep(3)" id="stepBtn3">③ テンプレート</button>
-    <button class="step-btn" onclick="goToStep(4)" id="stepBtn4">④ 確認・送信</button>
+    <button class="sbtn active" onclick="goStep(1)" id="sb1">① 送信者情報</button>
+    <button class="sbtn" onclick="goStep(2)" id="sb2">② 企業設定</button>
+    <button class="sbtn" onclick="goStep(3)" id="sb3">③ テンプレート</button>
+    <button class="sbtn" onclick="goStep(4)" id="sb4">④ 確認・送信</button>
   </div>
 
-  <!-- ========== STEP 1: 送信者情報 ========== -->
+  <!-- STEP1 -->
   <div class="section active" id="step1">
     <div class="card">
-      <div class="card-title"><span class="badge">1</span>あなたの情報</div>
-
-<div class="form-group">
-        <label>お名前 *</label>
-        <input type="text" id="senderName" placeholder="山田 太郎" />
-      </div>
-      <div class="form-group">
-        <label>会社名 *</label>
-        <input type="text" id="senderCompany" placeholder="株式会社○○" />
-      </div>
-      <div class="form-group">
-        <label>メールアドレス *</label>
-        <input type="email" id="senderEmail" placeholder="yamada@example.com" />
-      </div>
-      <div class="form-group">
-        <label>電話番号</label>
-        <input type="tel" id="senderPhone" placeholder="03-1234-5678" />
-      </div>
+      <div class="ctitle"><span class="badge">1</span>あなたの情報</div>
+      <div class="fg"><label>お名前 *</label><input type="text" id="sName" placeholder="山田 太郎"/></div>
+      <div class="fg"><label>会社名 *</label><input type="text" id="sCompany" placeholder="株式会社リロクラブ"/></div>
+      <div class="fg"><label>メールアドレス *</label><input type="email" id="sEmail" placeholder="yamada@example.com"/></div>
+      <div class="fg"><label>電話番号</label><input type="tel" id="sPhone" placeholder="03-1234-5678"/></div>
     </div>
-    <div class="action-bar">
-      <button class="btn btn-primary btn-block" onclick="nextStep(1)">次へ　→</button>
-    </div>
+    <div class="abar"><button class="btn btn-p btn-bl" onclick="nextStep(1)">次へ　→</button></div>
   </div>
 
-  <!-- ========== STEP 2: 企業設定 ========== -->
+  <!-- STEP2 -->
   <div class="section" id="step2">
     <div class="card">
-      <div class="card-title"><span class="badge">2</span>送信先企業（最大5社）</div>
-
+      <div class="ctitle"><span class="badge">2</span>送信先企業（最大5社）</div>
       <div class="company-list" id="companyList"></div>
-
-      <button class="add-company-btn" id="addCompanyBtn" onclick="addCompany()" style="margin-top:12px">
-        <span>＋</span> 企業を追加する
-      </button>
+      <button class="add-btn" id="addBtn" onclick="addCompany()"><span>＋</span> 企業を追加する</button>
     </div>
-    <div class="action-bar">
-      <button class="btn btn-secondary" onclick="goToStep(1)">← 戻る</button>
-      <button class="btn btn-primary" onclick="nextStep(2)">次へ　→</button>
+    <div class="abar">
+      <button class="btn btn-s" onclick="goStep(1)">← 戻る</button>
+      <button class="btn btn-p" onclick="nextStep(2)">次へ　→</button>
     </div>
   </div>
 
-  <!-- ========== STEP 3: テンプレート選択 ========== -->
+  <!-- STEP3 -->
   <div class="section" id="step3">
     <div class="card">
-      <div class="card-title"><span class="badge">3</span>送信内容テンプレート</div>
+      <div class="ctitle"><span class="badge">3</span>送信内容テンプレート</div>
 
-      <div class="template-grid" id="templateGrid"></div>
+      <!-- 送信パターン選択 -->
+      <div class="fg">
+        <label>📋 送信パターン（業態別）</label>
+        <div class="pattern-row" id="patternRow"></div>
+        <div id="aiHint" style="font-size:.75rem;color:var(--success);margin-top:4px;display:none">🤖 企業サイトから業態を自動判定しました</div>
+      </div>
 
-      <div id="templateEditArea" style="margin-top:18px;display:none;">
-        <div class="form-group">
-          <label>カスタム編集（選択中のテンプレートを編集可能）</label>
-          <textarea id="templateEdit" style="min-height:160px;"></textarea>
-        </div>
+      <hr class="divider">
+
+      <!-- 会社概要選択 -->
+      <div class="fg">
+        <label>🏢 会社概要パターン</label>
+        <select id="companyDescSel" onchange="updatePreview()">
+          <option value="0">⑤ 飲食店向け送客特化版（推奨）</option>
+          <option value="1">① 超シンプル版</option>
+          <option value="2">② 権威性強調版（上場グループ訴求）</option>
+          <option value="3">③ 実績強調版（数字インパクト重視）</option>
+          <option value="4">④ 信頼・安定感重視版</option>
+          <option value="5">⑥ 「なぜ飲食に？」を補足する版</option>
+          <option value="6">⑦ 経営者向け・ビジネス寄り版</option>
+          <option value="7">⑧ 本部・大手企業向け版</option>
+          <option value="8">⑨ 柔らかめ（個人経営向け）</option>
+          <option value="9">⑩ 信頼＋社会性を出す版</option>
+        </select>
+      </div>
+
+      <hr class="divider">
+
+      <!-- 本文プレビュー・編集 -->
+      <div class="edit-area">
+        <label>✏️ 送信内容（編集可能）</label>
+        <textarea id="msgEdit" style="min-height:260px"></textarea>
       </div>
     </div>
-    <div class="action-bar">
-      <button class="btn btn-secondary" onclick="goToStep(2)">← 戻る</button>
-      <button class="btn btn-primary" onclick="nextStep(3)">確認へ　→</button>
+    <div class="abar">
+      <button class="btn btn-s" onclick="goStep(2)">← 戻る</button>
+      <button class="btn btn-p" onclick="nextStep(3)">確認へ　→</button>
     </div>
   </div>
 
-  <!-- ========== STEP 4: 確認・送信 ========== -->
+  <!-- STEP4 -->
   <div class="section" id="step4">
     <div class="card">
-      <div class="card-title"><span class="badge">4</span>プレビューと送信確認</div>
-
-      <div id="previewArea">
-        <p style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:20px 0">
-          「プレビュー取得」ボタンを押すと、各企業のフォームを開いて<br>自動入力した状態のスクリーンショットを確認できます。
-        </p>
-      </div>
-
-      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn btn-secondary btn-sm" onclick="loadPreview()" id="previewBtn">
-          🔍 プレビュー取得
-        </button>
+      <div class="ctitle"><span class="badge">4</span>プレビューと送信確認</div>
+      <div id="previewArea"><p style="color:var(--muted);font-size:.85rem;text-align:center;padding:20px 0">「プレビュー取得」で各フォームを解析して入力状況を確認できます。</p></div>
+      <div style="margin-top:16px">
+        <button class="btn btn-s btn-sm" onclick="loadPreview()" id="prevBtn">🔍 プレビュー取得</button>
       </div>
     </div>
-
-    <!-- 送信概要 -->
-    <div class="card" id="submitSummaryCard" style="display:none;">
-      <div class="card-title"><span class="badge" style="background:var(--success)">✓</span>送信概要</div>
-      <div id="submitSummary" style="font-size:0.85rem;color:var(--text-muted);line-height:1.8;"></div>
+    <div class="card" id="summaryCard" style="display:none">
+      <div class="ctitle"><span class="badge" style="background:var(--success)">✓</span>送信概要</div>
+      <div id="summaryBody" style="font-size:.85rem;color:var(--muted);line-height:1.8"></div>
     </div>
-
-    <div class="action-bar">
-      <button class="btn btn-secondary" onclick="goToStep(3)">← 戻る</button>
-      <button class="btn btn-success" onclick="confirmSubmit()" id="submitBtn">
-        🚀 送信実行
-      </button>
+    <div class="abar">
+      <button class="btn btn-s" onclick="goStep(3)">← 戻る</button>
+      <button class="btn btn-ok" onclick="confirmSend()">🚀 送信実行</button>
     </div>
   </div>
 
-  <!-- ========== STEP 5: 完了 ========== -->
+  <!-- STEP5 完了 -->
   <div class="section" id="step5">
     <div class="card">
       <div class="result-summary">
@@ -755,499 +216,357 @@
         <div class="result-title">送信完了</div>
         <div class="result-sub">各企業のフォームへの送信が完了しました</div>
       </div>
-      <div id="resultList" class="preview-list"></div>
+      <div id="resultList"></div>
     </div>
-    <div class="action-bar" style="margin-top:16px;">
-      <button class="btn btn-secondary btn-block" onclick="resetAll()">🔄 最初からやり直す</button>
+    <div class="abar" style="margin-top:16px">
+      <button class="btn btn-s btn-bl" onclick="resetAll()">🔄 最初からやり直す</button>
     </div>
   </div>
-
 </div>
 
-<!-- ローディング -->
-<div class="loading-overlay" id="loadingOverlay">
+<div class="loading-overlay" id="loader">
   <div class="spinner"></div>
-  <div class="loading-text" id="loadingTitle">処理中...</div>
-  <div class="loading-sub" id="loadingSubText">しばらくお待ちください</div>
+  <div class="ltext" id="ltxt">処理中...</div>
+  <div class="lsub" id="lsub">しばらくお待ちください</div>
 </div>
 
-<!-- 送信確認モーダル -->
-<div class="modal" id="confirmModal">
-  <div class="modal-box">
-    <div class="modal-title">⚠️ 送信確認</div>
-    <div class="modal-body" id="confirmModalBody">
-      以下の企業に問い合わせフォームから送信します。<br>この操作は取り消せません。本当に送信しますか？
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">キャンセル</button>
-      <button class="btn btn-danger" style="flex:1" onclick="executeSubmit()">送信する</button>
+<div class="modal" id="modal">
+  <div class="mbox">
+    <div class="mtitle">⚠️ 送信確認</div>
+    <div class="mbody" id="mbody"></div>
+    <div class="mactions">
+      <button class="btn btn-s" style="flex:1" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-d" style="flex:1" onclick="doSend()">送信する</button>
     </div>
   </div>
 </div>
 
-<!-- トースト -->
-<div class="toast-container" id="toastContainer"></div>
+<div class="toast-c" id="toastC"></div>
 
 <script>
-const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3001' : '';
-let currentStep = 1;
-let companies = [];
-let selectedTemplate = null;
-let previewJobId = null;
+const API = (location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:3001':'';
+let companies=[], selPattern=0, jobId=null;
 
-// ========== テンプレートデータ ==========
-const templates = [
+// ===== テンプレートデータ =====
+const patterns = [
   {
-    id: 1,
-    title: '📊 サービス紹介',
-    preview: '弊社のサービスについてご紹介させてください。貴社の課題解決に...',
-    content: `はじめまして。株式会社○○の[お名前]と申します。
+    id:0, label:'A カフェ向け',
+    title:'【平日集客強化】成果報酬型・新たな予約導線のご提案',
+    body:`突然のご連絡失礼いたします。
+株式会社リロクラブと申します。
 
-突然のご連絡をご容赦ください。
-弊社では○○に特化したソリューションを提供しており、貴社のビジネス課題の解決に貢献できると考え、ご連絡させていただきました。
+カフェ業態様向けに、平日やアイドルタイムの集客強化につながる完全成果報酬型の予約台帳サービスをご提案しております。
 
-・導入実績：○○社以上
-・主なメリット：コスト削減、業務効率化、売上向上
+本サービスは、
+・初期費用／月額費用なし
+・予約発生時のみ1名あたり100円
+・約2,300万人が利用する福利厚生メディアへ掲載
+・Instagram上への席予約ボタン設置（国内でも限られた企業のみ対応）
 
-ぜひ一度、詳細をご説明する機会をいただければ幸いです。
-ご都合のよい日時にてお打ち合わせをお願いできますでしょうか。
+企業勤務層の会員様が多いため、平日ランチ利用や打ち合わせ需要の獲得が期待できます。
 
-どうぞよろしくお願いいたします。`
+既存のSNS運用や集客施策に"追加するだけ"で、新たな予約導線を構築いただける仕組みです。
+
+オンラインにて40分ほど、具体的な導入方法をご説明させていただけませんでしょうか。
+直近では〇月〇日（〇）／〇日（〇）で調整可能です。
+何卒よろしくお願い申し上げます。
+
+株式会社リロクラブ`
   },
   {
-    id: 2,
-    title: '🤝 アライアンス提案',
-    preview: '貴社との業務提携についてご相談させていただきたく...',
-    content: `はじめまして。[会社名]の[お名前]でございます。
+    id:1, label:'B 高単価レストラン',
+    title:'【客層を広げる新たな予約導線】成果報酬型サービスのご提案',
+    body:`突然のご連絡失礼いたします。
+株式会社リロクラブと申します。
 
-この度は、貴社との業務提携についてご相談させていただきたく、ご連絡申し上げました。
+貴社のような高品質な飲食店様向けに、客層を広げる新たな予約導線として完全成果報酬型の予約サービスをご提案しております。
 
-弊社は○○分野において○○年の実績を持ち、現在○○社様と提携関係にございます。
-貴社の○○というビジネスと弊社の○○というアセットを組み合わせることで、お互いにシナジーが生まれると確信しております。
+本サービスは、
+・初期費用／月額費用なし
+・予約発生時のみ1名あたり100円
+・約2,300万人の企業会員様への店舗掲載
+・Instagram上への席予約ボタン設置対応
 
-もしよろしければ、一度お話し合いの機会を設けていただけないでしょうか。
-お時間は30分ほどを予定しております。
+福利厚生会員は企業勤務層が中心のため、落ち着いた客層の新規来店促進が期待できます。
+ブランドイメージを損なうことなく、新規予約チャネルを追加いただける仕組みです。
 
-ご検討のほど、よろしくお願いいたします。`
+ぜひオンラインにて40分ほど、詳細をご説明させていただけますと幸いです。
+直近では〇月〇日（〇）／〇日（〇）で調整可能です。
+何卒よろしくお願い申し上げます。
+
+株式会社リロクラブ`
   },
   {
-    id: 3,
-    title: '📋 資料請求・情報収集',
-    preview: '貴社の○○サービスについて詳しく知りたく...',
-    content: `お世話になります。[会社名]の[お名前]と申します。
+    id:2, label:'C 居酒屋チェーン',
+    title:'【宴会・団体予約強化】成果報酬型予約導線のご提案',
+    body:`突然のご連絡失礼いたします。
+株式会社リロクラブと申します。
 
-貴社の○○サービスについて大変興味を持ち、ご連絡させていただきました。
+宴会・団体利用の集客強化をご支援できる完全成果報酬型の予約台帳サービスをご提案しております。
 
-現在、弊社では○○の課題を抱えており、貴社のソリューションが解決策になり得ると感じております。
-つきましては、以下の点について詳細をお聞かせいただけますでしょうか。
+本サービスは、
+・初期費用／月額費用なし
+・予約発生時のみ1名あたり100円
+・全国約2,300万人が利用する福利厚生メディアへ掲載
+・Instagram席予約ボタン設置（国内でも限られた企業のみ対応）
 
-1. 導入費用・料金プランについて
-2. 導入までの期間・スケジュールについて  
-3. 弊社のような○○業種での導入事例について
+企業会員様の利用が多いため、宴会・会食・懇親会需要の獲得にもつながります。
+既存の集客施策に追加する形で、リスクなく予約導線を拡張いただけます。
 
-お手数ですが、資料のご送付またはご説明の機会をいただければ幸いです。
-よろしくお願いいたします。`
+オンラインにて40分ほど、具体的な送客事例をご紹介させていただけませんでしょうか。
+直近では〇月〇日（〇）／〇日（〇）で調整可能です。
+何卒よろしくお願い申し上げます。
+
+株式会社リロクラブ`
   },
   {
-    id: 4,
-    title: '🎯 イベント・セミナー招待',
-    preview: '弊社主催のセミナーにご招待したく...',
-    content: `はじめまして。[会社名]の[お名前]でございます。
+    id:3, label:'D チェーン本部',
+    title:'【複数店舗対応可】成果報酬型・予約導線強化のご提案',
+    body:`突然のご連絡失礼いたします。
+株式会社リロクラブと申します。
 
-この度、弊社主催にて以下のオンラインセミナーを開催する運びとなりました。
+複数店舗を展開されている企業様向けに、全店で活用可能な「完全成果報酬型」予約台帳サービスをご提案しております。
 
-【セミナー名】○○で実現する業務効率化
-【日時】20○○年○月○日（○）14:00〜15:30
-【形式】オンライン（Zoom）
-【参加費】無料
+本サービスは、
+・初期費用／月額費用なし
+・予約発生時のみ1名あたり100円
+・約2,300万人が利用する福利厚生メディアへの一括掲載
+・Instagram席予約ボタンの設置対応（国内でも限られた企業のみ）
 
-内容：○○に関する最新トレンドと実践事例をご紹介します。
+各店舗の予約導線を強化しながら、本部様での一元管理も可能です。
+既存施策に追加する形で導入いただけるため、リスクを抑えて全店展開をご検討いただけます。
 
-貴社のご担当者様にぜひご参加いただければと思い、ご連絡差し上げました。
-ご参加ご希望の場合は、以下のURLよりお申し込みください。
+オンラインにて40分ほど、具体的な導入フローをご説明させていただけませんでしょうか。
+直近では〇月〇日（〇）／〇日（〇）で調整可能です。
 
-ご参加をお待ちしております。`
-  },
-  {
-    id: 5,
-    title: '💡 課題解決提案',
-    preview: '貴社が抱える○○の課題について、弊社の○○で解決できます...',
-    content: `はじめまして。[会社名]の[お名前]と申します。
+なお、本件のご担当者様が別にいらっしゃいましたら、お手数ですがご共有（ご転送）いただけますと幸いです。
+何卒よろしくお願い申し上げます。
 
-貴社が○○において課題を抱えていらっしゃると伺い、ご連絡させていただきました。
-
-弊社では○○という独自のアプローチにより、以下のような実績を上げております。
-
-・○○の課題を持つ△△社様：コスト30%削減
-・○○で困っていた□□社様：作業時間50%短縮
-
-同様の課題をお持ちでしたら、弊社のソリューションがお役に立てるかと存じます。
-
-まずは課題のヒアリングも兼ねて、30分ほどのお時間をいただけないでしょうか。
-ご都合のよい日時をお知らせいただければ、合わせて参ります。
-
-よろしくお願いいたします。`
+株式会社リロクラブ`
   }
 ];
 
-// ========== 初期化 ==========
+const companyDescs = [
+  '弊社は、全国12,500社・約2,300万人の企業会員基盤を活用し、飲食店様への送客支援を行っている福利厚生サービス運営会社です。',
+  '弊社は、企業向け福利厚生サービスを提供しており、全国12,500社・約2,300万人の会員様にご利用いただいております。',
+  '弊社は、東証プライム上場リログループの一員として、企業向け福利厚生サービスを提供しており、全国12,500社・約2,300万人の会員基盤を有しております。',
+  '弊社は、全国12,500社・約2,300万人が利用する国内最大級の企業向け福利厚生サービスを運営しております。',
+  '弊社は、企業の人材戦略・福利厚生支援を専門とし、長年にわたり多くの大手企業様にご導入いただいている福利厚生サービス運営会社です。',
+  '弊社は企業向け福利厚生サービスを運営しており、会員様の利用促進の一環として飲食店様への送客支援も行っております。',
+  '弊社は、企業向け福利厚生ソリューションを提供し、約2,300万人の会員ネットワークを活用したマーケティング支援を行っております。',
+  '弊社は、全国規模で企業向け福利厚生サービスを展開し、12,500社・約2,300万人の会員データベースを活用した集客支援を行っております。',
+  '弊社は、企業で働く方々向けの福利厚生サービスを運営しており、多くの会員様に日常利用いただいております。',
+  '弊社は、企業と従業員の満足度向上を目的とした福利厚生サービスを全国規模で展開しております。',
+];
+
+// 業態キーワード判定
+function detectPattern(url, siteName) {
+  const t = (url + ' ' + siteName).toLowerCase();
+  if (/チェーン|本部|holdings|hd|グループ|多店舗|franchise/.test(t)) return 3;
+  if (/居酒屋|izakaya|宴会|banquet|焼肉|焼き鳥|串/.test(t)) return 2;
+  if (/フレンチ|イタリアン|鉄板|割烹|懐石|高級|premium|fine/.test(t)) return 1;
+  if (/カフェ|cafe|コーヒー|coffee|ベーカリー|bakery|スイーツ/.test(t)) return 0;
+  return null;
+}
+
+function buildMessage(patternId, descId) {
+  const p = patterns[patternId];
+  const desc = companyDescs[descId];
+  return p.title + '\n\n' + desc + '\n\n' + p.body;
+}
+
+function updatePreview() {
+  const descId = parseInt(document.getElementById('companyDescSel').value);
+  document.getElementById('msgEdit').value = buildMessage(selPattern, descId);
+}
+
+function renderPatterns(autoId) {
+  const row = document.getElementById('patternRow');
+  row.innerHTML = patterns.map((p,i) => {
+    const isAuto = i === autoId;
+    const isSel = i === selPattern;
+    return `<span class="pattern-chip ${isSel?'sel':''} ${isAuto&&!isSel?'auto':''}" onclick="selectPattern(${i})">${p.label}${isAuto?' 🤖':''}</span>`;
+  }).join('');
+  const hint = document.getElementById('aiHint');
+  hint.style.display = autoId !== null ? 'block' : 'none';
+}
+
+function selectPattern(id) {
+  selPattern = id;
+  renderPatterns(null);
+  updatePreview();
+}
+
+// ===== 初期化 =====
 function init() {
-  renderTemplates();
-  addCompany(); // 最初の1社をデフォルトで追加
-  checkServerStatus();
-  setInterval(checkServerStatus, 10000);
-}
-
-async function checkServerStatus() {
-  try {
-    const res = await fetch(`${API}/api/health`, { signal: AbortSignal.timeout(3000) });
-    if (res.ok) {
-      document.getElementById('statusDot').className = 'status-dot online';
-      document.getElementById('statusText').textContent = 'サーバー接続済み';
-    }
-  } catch {
-    document.getElementById('statusDot').className = 'status-dot';
-    document.getElementById('statusText').textContent = '未接続';
-  }
-}
-
-// ========== ステップ管理 ==========
-function goToStep(n) {
-  currentStep = n;
-  document.querySelectorAll('.section').forEach((s, i) => {
-    s.classList.toggle('active', i + 1 === n);
-  });
-  document.querySelectorAll('.step-btn').forEach((btn, i) => {
-    btn.classList.remove('active', 'done');
-    if (i + 1 === n) btn.classList.add('active');
-    else if (i + 1 < n) btn.classList.add('done');
-  });
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function nextStep(currentN) {
-  if (currentN === 1) {
-    const name = document.getElementById('senderName').value.trim();
-    const email = document.getElementById('senderEmail').value.trim();
-    const company = document.getElementById('senderCompany').value.trim();
-    if (!name || !email || !company) {
-      showToast('お名前・会社名・メールアドレスを入力してください', 'error');
-      return;
-    }
-  }
-  if (currentN === 2) {
-    const valid = companies.filter(c => c.url);
-    if (valid.length === 0) {
-      showToast('企業URLを少なくとも1件入力してください', 'error');
-      return;
-    }
-  }
-  if (currentN === 3) {
-    if (!selectedTemplate) {
-      showToast('テンプレートを1つ選択してください', 'error');
-      return;
-    }
-    buildSubmitSummary();
-  }
-  goToStep(currentN + 1);
-}
-
-// ========== 企業管理 ==========
-function addCompany() {
-  if (companies.length >= 5) {
-    showToast('最大5社まで設定できます', 'info');
-    return;
-  }
-  const id = 'c' + Date.now();
-  companies.push({ id, name: '', url: '' });
-  renderCompanies();
-}
-
-function removeCompany(id) {
-  companies = companies.filter(c => c.id !== id);
-  renderCompanies();
-}
-
-function updateCompany(id, field, value) {
-  const c = companies.find(c => c.id === id);
-  if (c) c[field] = value;
-}
-
-function renderCompanies() {
-  const list = document.getElementById('companyList');
-  list.innerHTML = companies.map((c, i) => `
-    <div class="company-card" id="card_${c.id}">
-      <div class="company-card-header">
-        <div class="company-num">${i + 1}</div>
-        <div class="company-name-display">${c.name || `企業 ${i + 1}`}</div>
-        <button class="remove-btn" onclick="removeCompany('${c.id}')">✕</button>
-      </div>
-      <div class="company-fields">
-        <div class="form-group">
-          <label>会社名</label>
-          <input type="text" value="${c.name}" placeholder="株式会社○○"
-            oninput="updateCompany('${c.id}','name',this.value);document.querySelector('#card_${c.id} .company-name-display').textContent=this.value||'企業 ${i+1}'" />
-        </div>
-        <div class="form-group">
-          <label>問い合わせフォームURL *</label>
-          <input type="url" value="${c.url}" placeholder="https://example.com/contact"
-            oninput="updateCompany('${c.id}','url',this.value)" />
-        </div>
-      </div>
-    </div>
-  `).join('');
-
-  document.getElementById('addCompanyBtn').style.display =
-    companies.length >= 5 ? 'none' : 'flex';
-}
-
-// ========== テンプレート ==========
-function renderTemplates() {
-  const grid = document.getElementById('templateGrid');
-  grid.innerHTML = templates.map(t => `
-    <div class="template-card ${selectedTemplate?.id === t.id ? 'selected' : ''}"
-         onclick="selectTemplate(${t.id})">
-      <div class="template-title">${t.title}</div>
-      <div class="template-preview">${t.preview}</div>
-    </div>
-  `).join('');
-}
-
-function selectTemplate(id) {
-  selectedTemplate = templates.find(t => t.id === id);
-  renderTemplates();
-
-  const editArea = document.getElementById('templateEditArea');
-  editArea.style.display = 'block';
-
-  const textarea = document.getElementById('templateEdit');
-  textarea.value = selectedTemplate.content;
-
-  textarea.addEventListener('input', () => {
-    selectedTemplate.content = textarea.value;
-  });
-}
-
-// ========== 送信概要 ==========
-function buildSubmitSummary() {
-  const validCompanies = companies.filter(c => c.url);
-  const summaryCard = document.getElementById('submitSummaryCard');
-  const summary = document.getElementById('submitSummary');
-
-  const senderName = document.getElementById('senderName').value;
-  const senderCompany = document.getElementById('senderCompany').value;
-
-  const content = selectedTemplate.content
-    .replace('[お名前]', senderName)
-    .replace('[会社名]', senderCompany);
-  selectedTemplate.content = content;
-  if (document.getElementById('templateEdit')) {
-    document.getElementById('templateEdit').value = content;
-  }
-
-  summary.innerHTML = `
-    <strong style="color:var(--text)">送信者：</strong>${senderName}（${senderCompany}）<br>
-    <strong style="color:var(--text)">テンプレート：</strong>${selectedTemplate.title}<br>
-    <strong style="color:var(--text)">送信先：</strong>${validCompanies.map(c => c.name || c.url).join('、')}<br>
-    <strong style="color:var(--text)">対象社数：</strong>${validCompanies.length}社
-  `;
-  summaryCard.style.display = 'block';
-}
-
-// ========== プレビュー取得 ==========
-async function loadPreview() {
-  const validCompanies = companies.filter(c => c.url);
-  if (validCompanies.length === 0) {
-    showToast('企業URLを設定してください', 'error');
-    return;
-  }
-
-  showLoading('フォームを解析中...', '各企業サイトを開いて自動入力しています。\n数十秒かかる場合があります。');
-  document.getElementById('previewBtn').disabled = true;
-
-  const payload = {
-    companies: validCompanies,
-    senderInfo: {
-      name: document.getElementById('senderName').value,
-      company: document.getElementById('senderCompany').value,
-      email: document.getElementById('senderEmail').value,
-      phone: document.getElementById('senderPhone').value,
-    },
-    messageTemplate: selectedTemplate
-  };
-
-  try {
-    const res = await fetch(`${API}/api/preview`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    previewJobId = data.jobId;
-
-    // ポーリング
-    pollJob(data.jobId);
-  } catch (err) {
-    hideLoading();
-    showToast('サーバーに接続できません。バックエンドが起動しているか確認してください。', 'error');
-    document.getElementById('previewBtn').disabled = false;
-  }
-}
-
-async function pollJob(jobId) {
-  const res = await fetch(`${API}/api/job/${jobId}`);
-  const job = await res.json();
-
-  if (job.status !== 'done' && job.status !== 'error') {
-    setTimeout(() => pollJob(jobId), 2000);
-    return;
-  }
-
-  hideLoading();
-  document.getElementById('previewBtn').disabled = false;
-  renderPreviews(job);
-}
-
-function renderPreviews(job) {
-  const area = document.getElementById('previewArea');
-
-  let html = '<div class="preview-list">';
-
-  for (const p of job.previews) {
-    const filled = p.fillResults?.filled || [];
-    const notFound = p.fillResults?.notFound || [];
-
-    html += `
-      <div class="preview-item">
-        <div class="preview-item-header">
-          <div class="preview-company-name">${p.companyName || p.url}</div>
-          <span class="status-badge ready">入力完了</span>
-        </div>
-        ${p.screenshotUrl ? `<img class="preview-screenshot" src="${API}${p.screenshotUrl}" alt="プレビュー" loading="lazy">` : ''}
-        <div class="preview-details">
-          <div>入力フィールド確認：</div>
-          <div class="fill-result">
-            ${filled.map(f => `<span class="fill-tag ok">✓ ${f.field}</span>`).join('')}
-            ${notFound.map(f => `<span class="fill-tag ng">✕ ${f}（未検出）</span>`).join('')}
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  for (const e of job.errors) {
-    html += `
-      <div class="preview-item">
-        <div class="preview-item-header">
-          <div class="preview-company-name">${e.company}</div>
-          <span class="status-badge error">エラー</span>
-        </div>
-        <div class="preview-details" style="color:var(--danger)">${e.error}</div>
-      </div>
-    `;
-  }
-
-  html += '</div>';
-  area.innerHTML = html;
-}
-
-// ========== 送信処理 ==========
-function confirmSubmit() {
-  const validCompanies = companies.filter(c => c.url);
-  document.getElementById('confirmModalBody').innerHTML =
-    `以下の<strong>${validCompanies.length}社</strong>の問い合わせフォームに送信します。<br><br>` +
-    validCompanies.map(c => `・${c.name || c.url}`).join('<br>') +
-    `<br><br>⚠️ この操作は取り消せません。`;
-  document.getElementById('confirmModal').classList.add('active');
-}
-
-function closeModal() {
-  document.getElementById('confirmModal').classList.remove('active');
-}
-
-async function executeSubmit() {
-  closeModal();
-  showLoading('送信中...', '各企業のフォームに送信しています。\nしばらくお待ちください。');
-
-  const validCompanies = companies.filter(c => c.url);
-
-  try {
-    const res = await fetch(`${API}/api/submit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        companies: validCompanies,
-        senderInfo: {
-          name: document.getElementById('senderName').value,
-          company: document.getElementById('senderCompany').value,
-          email: document.getElementById('senderEmail').value,
-          phone: document.getElementById('senderPhone').value,
-        },
-        messageTemplate: selectedTemplate,
-        selectedCompanyIds: validCompanies.map(c => c.id)
-      })
-    });
-    const data = await res.json();
-    hideLoading();
-    showResults(data.results);
-  } catch (err) {
-    hideLoading();
-    showToast('送信中にエラーが発生しました', 'error');
-  }
-}
-
-function showResults(results) {
-  goToStep(5);
-  const list = document.getElementById('resultList');
-  list.innerHTML = results.map(r => `
-    <div class="preview-item">
-      <div class="preview-item-header">
-        <div class="preview-company-name">${r.companyName}</div>
-        <span class="status-badge ${r.status === 'submitted' ? 'submitted' : 'error'}">
-          ${r.status === 'submitted' ? '送信完了' : r.status === 'no_submit_button' ? '手動送信要' : 'エラー'}
-        </span>
-      </div>
-      ${r.screenshotUrl ? `<img class="preview-screenshot" src="${API}${r.screenshotUrl}" alt="結果" loading="lazy">` : ''}
-      <div class="preview-details">${r.message || r.error || '正常に送信されました'}</div>
-    </div>
-  `).join('');
-}
-
-// ========== リセット ==========
-function resetAll() {
-  companies = [];
-  selectedTemplate = null;
-  previewJobId = null;
-  document.getElementById('senderName').value = '';
-  document.getElementById('senderCompany').value = '';
-  document.getElementById('senderEmail').value = '';
-  document.getElementById('senderPhone').value = '';
-  document.getElementById('previewArea').innerHTML = `<p style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:20px 0">「プレビュー取得」ボタンを押すと、各企業のフォームを開いて<br>自動入力した状態のスクリーンショットを確認できます。</p>`;
-  document.getElementById('submitSummaryCard').style.display = 'none';
-  renderTemplates();
+  selPattern = 0;
+  renderPatterns(null);
+  updatePreview();
   addCompany();
-  goToStep(1);
+  checkServer();
+  setInterval(checkServer, 10000);
 }
 
-// ========== UI ヘルパー ==========
-function showLoading(title, sub) {
-  document.getElementById('loadingTitle').textContent = title;
-  document.getElementById('loadingSubText').textContent = sub;
-  document.getElementById('loadingOverlay').classList.add('active');
+async function checkServer() {
+  try {
+    const r = await fetch(API+'/api/health', {signal:AbortSignal.timeout(3000)});
+    if (r.ok) { document.getElementById('sdot').className='sdot on'; document.getElementById('stxt').textContent='サーバー接続済み'; }
+  } catch { document.getElementById('sdot').className='sdot'; document.getElementById('stxt').textContent='未接続'; }
 }
 
-function hideLoading() {
-  document.getElementById('loadingOverlay').classList.remove('active');
+// ===== ステップ管理 =====
+function goStep(n) {
+  document.querySelectorAll('.section').forEach((s,i)=>s.classList.toggle('active',i+1===n));
+  document.querySelectorAll('.sbtn').forEach((b,i)=>{
+    b.classList.remove('active','done');
+    if(i+1===n) b.classList.add('active');
+    else if(i+1<n) b.classList.add('done');
+  });
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 
-function showToast(msg, type = 'info') {
-  const container = document.getElementById('toastContainer');
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  toast.textContent = msg;
-  container.appendChild(toast);
-  setTimeout(() => toast.remove(), 3500);
+function nextStep(n) {
+  if (n===1) {
+    if (!document.getElementById('sName').value.trim()||!document.getElementById('sEmail').value.trim()||!document.getElementById('sCompany').value.trim()) {
+      return toast('お名前・会社名・メールアドレスを入力してください','error');
+    }
+  }
+  if (n===2) {
+    const valid = companies.filter(c=>c.url);
+    if (!valid.length) return toast('企業URLを少なくとも1件入力してください','error');
+
+    // AI業態判定
+    let autoId = null;
+    for (const c of valid) {
+      const id = detectPattern(c.url, c.name);
+      if (id !== null) { autoId = id; break; }
+    }
+    if (autoId !== null && autoId !== selPattern) {
+      selPattern = autoId;
+    }
+    renderPatterns(autoId);
+    updatePreview();
+  }
+  if (n===3) {
+    buildSummary();
+  }
+  goStep(n+1);
 }
+
+// ===== 企業管理 =====
+function addCompany() {
+  if (companies.length>=5) return toast('最大5社まで設定できます','info');
+  companies.push({id:'c'+Date.now(), name:'', url:''});
+  renderCompanies();
+}
+function removeCompany(id) { companies=companies.filter(c=>c.id!==id); renderCompanies(); }
+function updateCompany(id,f,v) { const c=companies.find(c=>c.id===id); if(c) c[f]=v; }
+function renderCompanies() {
+  document.getElementById('companyList').innerHTML = companies.map((c,i)=>`
+    <div class="ccard" id="cc_${c.id}">
+      <div class="ccard-h">
+        <div class="cnum">${i+1}</div>
+        <div class="cname" id="cn_${c.id}">${c.name||'企業 '+(i+1)}</div>
+        <button class="rbtn" onclick="removeCompany('${c.id}')">✕</button>
+      </div>
+      <div class="cfields">
+        <div class="fg"><label>会社名</label>
+          <input type="text" value="${c.name}" placeholder="株式会社○○"
+            oninput="updateCompany('${c.id}','name',this.value);document.getElementById('cn_${c.id}').textContent=this.value||'企業 ${i+1}'"/>
+        </div>
+        <div class="fg"><label>問い合わせフォームURL *</label>
+          <input type="url" value="${c.url}" placeholder="https://example.com/contact"
+            oninput="updateCompany('${c.id}','url',this.value)"/>
+        </div>
+      </div>
+    </div>`).join('');
+  document.getElementById('addBtn').style.display = companies.length>=5?'none':'flex';
+}
+
+// ===== 送信概要 =====
+function buildSummary() {
+  const valid = companies.filter(c=>c.url);
+  document.getElementById('summaryCard').style.display='block';
+  document.getElementById('summaryBody').innerHTML =
+    `<strong style="color:var(--text)">送信者：</strong>${document.getElementById('sName').value}（${document.getElementById('sCompany').value}）<br>
+     <strong style="color:var(--text)">パターン：</strong>${patterns[selPattern].label}<br>
+     <strong style="color:var(--text)">送信先：</strong>${valid.map(c=>c.name||c.url).join('、')}<br>
+     <strong style="color:var(--text)">対象社数：</strong>${valid.length}社`;
+}
+
+// ===== プレビュー =====
+async function loadPreview() {
+  const valid = companies.filter(c=>c.url);
+  if (!valid.length) return toast('企業URLを設定してください','error');
+  showLoader('フォームを解析中...','各企業サイトを開いています...');
+  document.getElementById('prevBtn').disabled=true;
+  try {
+    const r = await fetch(API+'/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companies:valid,senderInfo:getSenderInfo(),messageTemplate:{content:document.getElementById('msgEdit').value}})});
+    const d = await r.json();
+    jobId=d.jobId;
+    pollJob(d.jobId);
+  } catch {
+    hideLoader();
+    toast('サーバーに接続できません','error');
+    document.getElementById('prevBtn').disabled=false;
+  }
+}
+async function pollJob(id) {
+  const r = await fetch(API+'/api/job/'+id);
+  const j = await r.json();
+  if (j.status!=='done'&&j.status!=='error') { setTimeout(()=>pollJob(id),2000); return; }
+  hideLoader();
+  document.getElementById('prevBtn').disabled=false;
+  renderPreviews(j);
+}
+function renderPreviews(job) {
+  let h='';
+  for (const p of job.previews) {
+    const filled=(p.fillResults?.filled||[]);
+    const nf=(p.fillResults?.notFound||[]);
+    h+=`<div class="preview-item"><div class="pitem-h"><div class="pname">${p.companyName||p.url}</div><span class="sbadge ready">解析完了</span></div>
+    <div class="pdetail">入力フィールド：${filled.map(f=>`<span class="ftag ok">✓ ${f.field}</span>`).join('')}${nf.map(f=>`<span class="ftag ng">✕ ${f}</span>`).join('')}</div></div>`;
+  }
+  for (const e of job.errors) {
+    h+=`<div class="preview-item"><div class="pitem-h"><div class="pname">${e.company}</div><span class="sbadge error">エラー</span></div><div class="pdetail" style="color:var(--danger)">${e.error}</div></div>`;
+  }
+  document.getElementById('previewArea').innerHTML=h||'<p style="color:var(--muted);text-align:center;padding:20px">結果がありません</p>';
+}
+
+// ===== 送信 =====
+function getSenderInfo(){return{name:document.getElementById('sName').value,company:document.getElementById('sCompany').value,email:document.getElementById('sEmail').value,phone:document.getElementById('sPhone').value};}
+function confirmSend() {
+  const valid=companies.filter(c=>c.url);
+  document.getElementById('mbody').innerHTML=`以下の<strong>${valid.length}社</strong>に送信します。<br><br>${valid.map(c=>`・${c.name||c.url}`).join('<br>')}<br><br>⚠️ この操作は取り消せません。`;
+  document.getElementById('modal').classList.add('active');
+}
+function closeModal(){document.getElementById('modal').classList.remove('active');}
+async function doSend() {
+  closeModal();
+  showLoader('送信中...','各企業のフォームに送信しています...');
+  const valid=companies.filter(c=>c.url);
+  try {
+    const r=await fetch(API+'/api/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companies:valid,senderInfo:getSenderInfo(),messageTemplate:{content:document.getElementById('msgEdit').value},selectedCompanyIds:valid.map(c=>c.id)})});
+    const d=await r.json();
+    hideLoader();
+    showResults(d.results);
+  } catch { hideLoader(); toast('送信中にエラーが発生しました','error'); }
+}
+function showResults(results) {
+  goStep(5);
+  document.getElementById('resultList').innerHTML=results.map(r=>`
+    <div class="preview-item"><div class="pitem-h"><div class="pname">${r.companyName}</div>
+    <span class="sbadge ${r.status==='submitted'?'submitted':'error'}">${r.status==='submitted'?'送信完了':r.status==='no_fields'?'フィールド未検出':'エラー'}</span></div>
+    <div class="pdetail">${r.message||r.error||'正常に送信されました'}</div></div>`).join('');
+}
+
+// ===== リセット =====
+function resetAll(){companies=[];selPattern=0;renderPatterns(null);updatePreview();addCompany();['sName','sCompany','sEmail','sPhone'].forEach(id=>document.getElementById(id).value='');document.getElementById('summaryCard').style.display='none';document.getElementById('previewArea').innerHTML='<p style="color:var(--muted);font-size:.85rem;text-align:center;padding:20px 0">「プレビュー取得」で各フォームを解析して入力状況を確認できます。</p>';goStep(1);}
+
+// ===== UI =====
+function showLoader(t,s){document.getElementById('ltxt').textContent=t;document.getElementById('lsub').textContent=s;document.getElementById('loader').classList.add('active');}
+function hideLoader(){document.getElementById('loader').classList.remove('active');}
+function toast(msg,type='info'){const c=document.getElementById('toastC');const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;c.appendChild(t);setTimeout(()=>t.remove(),3500);}
 
 init();
 </script>
