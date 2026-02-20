@@ -124,7 +124,7 @@ app.post('/api/preview', async (req, res) => {
         const mapped = mapFields(fields, senderInfo, msg);
         const needsManual = mapped.length === 0 || fields.length === 0;
         jobs[jobId].previews.push({
-          companyId: company.id, companyName: company.name||url, url,
+          companyId: company.id, companyName: company.name || company.url || url, url,
           formAction: action, totalFields: fields.length, mappedFields: mapped,
           fillResults: {
             filled:   mapped.map(f => ({ field: f.name||f.id, value: f.value.substring(0,30)+(f.value.length>30?'…':'') })),
