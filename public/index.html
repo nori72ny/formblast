@@ -96,6 +96,15 @@ select option{background:var(--surface2);color:var(--text)}
 .result-icon{font-size:3.5rem;margin-bottom:16px}
 .result-title{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;margin-bottom:8px}
 .result-sub{color:var(--muted);font-size:.88rem}
+.sent-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:rgba(34,211,160,0.12);border:1px solid rgba(34,211,160,0.25);border-radius:20px;font-size:.7rem;font-weight:700;color:var(--success)}
+.unsent-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:rgba(107,107,133,0.1);border:1px solid var(--border);border-radius:20px;font-size:.7rem;font-weight:700;color:var(--muted)}
+.ccard.sent{border-color:rgba(34,211,160,0.2);background:rgba(34,211,160,0.03)}
+.del-bar{display:flex;align-items:center;gap:10px;padding:10px 0;margin-bottom:8px;border-bottom:1px solid var(--border)}
+.chk{width:18px;height:18px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.del-btn-mini{padding:6px 14px;background:rgba(255,79,110,0.1);border:1px solid rgba(255,79,110,0.3);border-radius:8px;color:var(--danger);font-size:.78rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif}
+.del-btn-mini:hover{background:rgba(255,79,110,0.2)}
+.saved-indicator{font-size:.7rem;color:var(--success);display:none;margin-left:8px}
+.saved-indicator.show{display:inline}
 .pattern-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .pattern-chip{padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:var(--surface2);color:var(--muted);transition:all .2s}
 .pattern-chip.sel{border-color:var(--accent);background:rgba(79,124,255,0.1);color:var(--accent)}
@@ -123,6 +132,10 @@ select option{background:var(--surface2);color:var(--text)}
   <div class="section active" id="step1">
     <div class="card">
       <div class="ctitle"><span class="badge">1</span>あなたの情報</div>
+      <div style="display:flex;align-items:center;margin-bottom:12px">
+        <span style="font-size:.75rem;color:var(--muted)">入力内容は自動保存されます</span>
+        <span class="saved-indicator" id="senderSaved">✓ 保存しました</span>
+      </div>
       <div class="fg"><label>お名前 *</label><input type="text" id="sName" placeholder="山田 太郎"/></div>
       <div class="fg"><label>会社名 *</label><input type="text" id="sCompany" placeholder="株式会社リロクラブ"/></div>
       <div class="fg"><label>メールアドレス *</label><input type="email" id="sEmail" placeholder="yamada@example.com"/></div>
@@ -134,7 +147,10 @@ select option{background:var(--surface2);color:var(--text)}
   <!-- STEP2 -->
   <div class="section" id="step2">
     <div class="card">
-      <div class="ctitle"><span class="badge">2</span>送信先企業（最大5社）</div>
+      <div class="ctitle">
+        <span class="badge">2</span>送信先企業（最大10社）
+        <span class="saved-indicator" id="companiesSaved">✓ 保存しました</span>
+      </div>
       <div class="company-list" id="companyList"></div>
       <button class="add-btn" id="addBtn" onclick="addCompany()"><span>＋</span> 企業を追加する</button>
     </div>
@@ -247,6 +263,51 @@ select option{background:var(--surface2);color:var(--text)}
 const API = (location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:3001':'';
 let companies=[], selPattern=0, jobId=null;
 
+// ===== ストレージキー =====
+const KEY_SENDER = 'fb_sender';
+const KEY_COMPANIES = 'fb_companies';
+
+// ===== 送信者情報の保存・読込 =====
+function saveSender() {
+  const data = {
+    name: document.getElementById('sName').value,
+    company: document.getElementById('sCompany').value,
+    email: document.getElementById('sEmail').value,
+    phone: document.getElementById('sPhone').value,
+  };
+  localStorage.setItem(KEY_SENDER, JSON.stringify(data));
+  showSaved('senderSaved');
+}
+
+function loadSender() {
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY_SENDER)||'{}');
+    if (d.name) document.getElementById('sName').value = d.name;
+    if (d.company) document.getElementById('sCompany').value = d.company;
+    if (d.email) document.getElementById('sEmail').value = d.email;
+    if (d.phone) document.getElementById('sPhone').value = d.phone;
+  } catch(e){}
+}
+
+// ===== 企業情報の保存・読込 =====
+function saveCompanies() {
+  localStorage.setItem(KEY_COMPANIES, JSON.stringify(companies));
+}
+
+function loadCompanies() {
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY_COMPANIES)||'[]');
+    if (d.length) { companies = d; renderCompanies(); }
+    else addCompany();
+  } catch(e){ addCompany(); }
+}
+
+function showSaved(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
 // ===== テンプレートデータ =====
 const patterns = [
   {
@@ -407,7 +468,12 @@ function init() {
   selPattern = 0;
   renderPatterns(null);
   updatePreview();
-  addCompany();
+  loadSender();
+  loadCompanies();
+  // 送信者情報の自動保存（入力のたびに）
+  ['sName','sCompany','sEmail','sPhone'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', saveSender);
+  });
   checkServer();
   setInterval(checkServer, 10000);
 }
@@ -460,18 +526,50 @@ function nextStep(n) {
 
 // ===== 企業管理 =====
 function addCompany() {
-  if (companies.length>=5) return toast('最大5社まで設定できます','info');
-  companies.push({id:'c'+Date.now(), name:'', url:''});
+  if (companies.length>=10) return toast('最大10社まで登録できます','info');
+  companies.push({id:'c'+Date.now(), name:'', url:'', sent:false, sentAt:''});
   renderCompanies();
+  saveCompanies();
 }
-function removeCompany(id) { companies=companies.filter(c=>c.id!==id); renderCompanies(); }
-function updateCompany(id,f,v) { const c=companies.find(c=>c.id===id); if(c) c[f]=v; }
+function removeCompany(id) {
+  companies=companies.filter(c=>c.id!==id);
+  renderCompanies();
+  saveCompanies();
+}
+
+function deleteChecked() {
+  const checked = [...document.querySelectorAll('.cchk:checked')].map(el=>el.dataset.id);
+  if (!checked.length) return toast('削除する企業を選択してください','info');
+  if (!confirm(checked.length+'社を削除しますか？')) return;
+  companies = companies.filter(c=>!checked.includes(c.id));
+  renderCompanies();
+  saveCompanies();
+  toast(checked.length+'社を削除しました','success');
+}
+function updateCompany(id,f,v) {
+  const c=companies.find(c=>c.id===id);
+  if(c) { c[f]=v; saveCompanies(); showSaved('companiesSaved'); }
+}
 function renderCompanies() {
-  document.getElementById('companyList').innerHTML = companies.map((c,i)=>`
-    <div class="ccard" id="cc_${c.id}">
+  const hasAny = companies.length > 0;
+  let html = '';
+  if (hasAny) {
+    html += `<div class="del-bar">
+      <input type="checkbox" class="chk" id="chkAll" onchange="toggleAllChk(this.checked)" title="全選択">
+      <label for="chkAll" style="font-size:.78rem;color:var(--muted);cursor:pointer">全選択</label>
+      <button class="del-btn-mini" onclick="deleteChecked()">🗑 選択削除</button>
+      <span style="font-size:.72rem;color:var(--muted);margin-left:auto">${companies.length}/10社</span>
+    </div>`;
+  }
+  html += companies.map((c,i)=>`
+    <div class="ccard ${c.sent?'sent':''}" id="cc_${c.id}">
       <div class="ccard-h">
+        <input type="checkbox" class="chk cchk" data-id="${c.id}">
         <div class="cnum">${i+1}</div>
         <div class="cname" id="cn_${c.id}">${c.name||'企業 '+(i+1)}</div>
+        ${c.sent
+          ? `<span class="sent-badge">✓ 送付済 ${c.sentAt?'<span style="font-weight:400;font-size:.65rem">'+c.sentAt+'</span>':''}</span>`
+          : `<span class="unsent-badge">未送付</span>`}
         <button class="rbtn" onclick="removeCompany('${c.id}')">✕</button>
       </div>
       <div class="cfields">
@@ -485,7 +583,12 @@ function renderCompanies() {
         </div>
       </div>
     </div>`).join('');
-  document.getElementById('addBtn').style.display = companies.length>=5?'none':'flex';
+  document.getElementById('companyList').innerHTML = html;
+  document.getElementById('addBtn').style.display = companies.length>=10?'none':'flex';
+}
+
+function toggleAllChk(checked) {
+  document.querySelectorAll('.cchk').forEach(el=>el.checked=checked);
 }
 
 // ===== 送信概要 =====
@@ -575,14 +678,33 @@ async function doSend() {
 }
 function showResults(results) {
   goStep(5);
+  const now = new Date();
+  const dateStr = now.getFullYear()+'/'+(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getDate().toString().padStart(2,'0');
+  // 送付済みフラグを更新
+  results.forEach(r=>{
+    if (r.status==='submitted') {
+      const c = companies.find(c=>c.id===r.companyId);
+      if (c) { c.sent=true; c.sentAt=dateStr; }
+    }
+  });
+  saveCompanies();
   document.getElementById('resultList').innerHTML=results.map(r=>`
     <div class="preview-item"><div class="pitem-h"><div class="pname">${r.companyName}</div>
-    <span class="sbadge ${r.status==='submitted'?'submitted':'error'}">${r.status==='submitted'?'送信完了':r.status==='no_fields'?'フィールド未検出':'エラー'}</span></div>
+    <span class="sbadge ${r.status==='submitted'?'submitted':'error'}">${r.status==='submitted'?'✓ 送信完了':r.status==='no_fields'?'フィールド未検出':'エラー'}</span></div>
     <div class="pdetail">${r.message||r.error||'正常に送信されました'}</div></div>`).join('');
 }
 
 // ===== リセット =====
-function resetAll(){companies=[];selPattern=0;renderPatterns(null);updatePreview();addCompany();['sName','sCompany','sEmail','sPhone'].forEach(id=>document.getElementById(id).value='');document.getElementById('summaryCard').style.display='none';document.getElementById('previewArea').innerHTML='<p style="color:var(--muted);font-size:.85rem;text-align:center;padding:20px 0">「プレビュー取得」で各フォームを解析して入力状況を確認できます。</p>';goStep(1);}
+function resetAll(){
+  selPattern=0;
+  renderPatterns(null);
+  updatePreview();
+  renderCompanies();
+  document.getElementById('summaryCard').style.display='none';
+  document.getElementById('previewArea').innerHTML='<p style="color:var(--muted);font-size:.85rem;text-align:center;padding:20px 0">「プレビュー取得」で各フォームを解析して入力状況を確認できます。</p>';
+  goStep(1);
+  toast('企業リストは保持しています','info');
+}
 
 // ===== UI =====
 function showLoader(t,s){document.getElementById('ltxt').textContent=t;document.getElementById('lsub').textContent=s;document.getElementById('loader').classList.add('active');}
