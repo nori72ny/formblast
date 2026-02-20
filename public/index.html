@@ -598,7 +598,7 @@ function nextStep(n) {
 // ===== 企業管理 =====
 function addCompany() {
   if (companies.length>=10) return toast('最大10社まで登録できます','info');
-  companies.push({id:'c'+Date.now(), name:'', url:'', sent:false, sentAt:''});
+  companies.unshift({id:'c'+Date.now(), name:'', url:'', sent:false, sentAt:''});
   renderCompanies();
   saveCompanies();
 }
@@ -698,21 +698,44 @@ function buildSummary() {
 
 // ===== プレビュー =====
 async function loadPreview() {
+  // チェック済み・未送付・URL入力済みの企業のみ対象
   const checkedIds = [...document.querySelectorAll('.cchk:checked')].map(el => el.dataset.id);
   const valid = companies.filter(c => c.url && checkedIds.includes(c.id) && !c.sent);
+
   if (!valid.length) return toast('プレビュー対象の企業がありません。未送付かつチェック済みの企業を選択してください。','error');
+
+  // デバッグ：対象企業をコンソールに出力
+  console.log('プレビュー対象:', valid.map(c => c.name + '(' + c.id + ')'));
+
   showLoader('フォームを解析中...','各企業サイトを開いています...');
-  document.getElementById('prevBtn').disabled=true;
+  document.getElementById('prevBtn').disabled = true;
+
   try {
-    const companiesWithMsg = valid.map(c=>({...c, msgContent: getMsgForCompany(c)}));
-    const r = await fetch(API+'/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companies:companiesWithMsg,senderInfo:getSenderInfo(),messageTemplate:{content:document.getElementById('msgEdit').value}})});
+    // 各企業に使用するメッセージとIDを明示的にセット
+    const companiesWithMsg = valid.map(c => ({
+      id:         c.id,
+      name:       c.name || c.url,
+      url:        c.url,
+      patternId:  c.patternId,
+      msgContent: getMsgForCompany(c),
+    }));
+
+    const r = await fetch(API + '/api/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        companies:       companiesWithMsg,
+        senderInfo:      getSenderInfo(),
+        messageTemplate: { content: document.getElementById('msgEdit').value },
+      }),
+    });
     const d = await r.json();
-    jobId=d.jobId;
+    jobId = d.jobId;
     pollJob(d.jobId);
   } catch {
     hideLoader();
     toast('サーバーに接続できません','error');
-    document.getElementById('prevBtn').disabled=false;
+    document.getElementById('prevBtn').disabled = false;
   }
 }
 async function pollJob(id) {
