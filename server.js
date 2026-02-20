@@ -1,137 +1,260 @@
 const express = require('express');
-const https = require('https');
-const http = require('http');
+const { chromium } = require('playwright-core');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
+const fs = require('fs');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/screenshots', express.static(path.join(__dirname, 'screenshots')));
+
+const screenshotDir = path.join(__dirname, 'screenshots');
+if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir);
+
 const jobs = {};
-function fetch2(url) {
-  return new Promise((resolve, reject) => {
-    const cl = url.startsWith('https') ? https : http;
-    cl.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, timeout: 15000 }, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        return fetch2(res.headers.location).then(resolve).catch(reject);
-      }
-      let d = '';
-      res.on('data', (c) => { d += c; });
-      res.on('end', () => resolve({ html: d }));
-    }).on('error', reject).on('timeout', () => reject(new Error('timeout')));
+
+// Render環境でのChromiumパス取得
+function getChromiumPath() {
+  // Render / Linux 環境
+  const candidates = [
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+  ].filter(Boolean);
+
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  // playwright-core のバンドル版にフォールバック
+  return undefined;
+}
+
+async function launchBrowser() {
+  const executablePath = getChromiumPath();
+  return chromium.launch({
+    headless: true,
+    executablePath,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--single-process',
+    ],
   });
 }
-function analyze(html) {
-  const fields = [];
-  const re = /<(input|textarea)([^>]*?)>/gi;
-  let m;
-  while ((m = re.exec(html)) !== null) {
-    const a = m[2];
-    const type = (a.match(/type=["']([^"']+)["']/i) || [])[1] || 'text';
-    if (['hidden','submit','button','reset','image','checkbox','radio'].includes(type)) continue;
-    const name = (a.match(/name=["']([^"']+)["']/i) || [])[1] || '';
-    const id = (a.match(/id=["']([^"']+)["']/i) || [])[1] || '';
-    const ph = (a.match(/placeholder=["']([^"']+)["']/i) || [])[1] || '';
-    if (name || id) fields.push({ tag: m[1], type, name, id, ph });
+
+// ── フォーム自動入力 ──────────────────────────
+async function detectAndFillForm(page, formData) {
+  const { name, company, email, phone, message } = formData;
+
+  const fieldPatterns = {
+    name: [
+      'input[name*="name" i]', 'input[name*="氏名"]', 'input[name*="名前"]',
+      'input[placeholder*="名前"]', 'input[placeholder*="氏名"]',
+      'input[placeholder*="name" i]', 'input[id*="name" i]',
+      '#name', '#contact_name',
+    ],
+    company: [
+      'input[name*="company" i]', 'input[name*="会社"]', 'input[name*="企業"]',
+      'input[placeholder*="会社"]', 'input[placeholder*="company" i]',
+      'input[id*="company" i]', '#company', '#organization',
+    ],
+    email: [
+      'input[type="email"]', 'input[name*="email" i]', 'input[name*="mail" i]',
+      'input[placeholder*="メール"]', 'input[placeholder*="email" i]',
+      'input[id*="email" i]', '#email',
+    ],
+    phone: [
+      'input[type="tel"]', 'input[name*="tel" i]', 'input[name*="phone" i]',
+      'input[name*="電話"]', 'input[placeholder*="電話"]',
+      'input[id*="tel" i]', 'input[id*="phone" i]',
+    ],
+    message: [
+      'textarea[name*="message" i]', 'textarea[name*="content" i]',
+      'textarea[name*="お問い合わせ"]', 'textarea[name*="内容"]',
+      'textarea[placeholder*="お問い合わせ"]', 'textarea[placeholder*="内容"]',
+      'textarea[id*="message" i]', 'textarea',
+    ],
+  };
+
+  const results = { filled: [], notFound: [] };
+
+  async function tryFill(fieldName, value, selectors) {
+    if (!value) return;
+    for (const sel of selectors) {
+      try {
+        const el = await page.$(sel);
+        if (el && await el.isVisible()) {
+          await el.click();
+          await el.fill(value);
+          results.filled.push({ field: fieldName, selector: sel });
+          return;
+        }
+      } catch (_) {}
+    }
+    results.notFound.push(fieldName);
   }
-  const fm = html.match(/<form([^>]*?)>/i);
-  const action = fm ? ((fm[1].match(/action=["']([^"']+)["']/i) || [])[1] || '') : '';
-  return { fields, action };
+
+  await tryFill('お名前',       name,    fieldPatterns.name);
+  await tryFill('会社名',       company, fieldPatterns.company);
+  await tryFill('メールアドレス', email,   fieldPatterns.email);
+  await tryFill('電話番号',     phone,   fieldPatterns.phone);
+  await tryFill('お問い合わせ内容', message, fieldPatterns.message);
+
+  return results;
 }
-function mapF(fields, info, msg) {
-  return fields.map((f) => {
-    const k = (f.name + ' ' + f.id + ' ' + f.ph).toLowerCase();
-    let v = '';
-    if (/name|氏名|名前|お名前/.test(k) && !/company|会社/.test(k)) v = info.name;
-    else if (/company|会社|企業/.test(k)) v = info.company;
-    else if (/email|mail|メール/.test(k)) v = info.email;
-    else if (/tel|phone|電話/.test(k)) v = info.phone;
-    else if (/message|content|body|問い合わせ|内容/.test(k)) v = msg;
-    return v ? Object.assign({}, f, { value: v }) : null;
-  }).filter(Boolean);
-}
+
+// ── API: プレビュー取得 ───────────────────────
 app.post('/api/preview', async (req, res) => {
   const { companies, senderInfo, messageTemplate } = req.body;
-  if (!companies || !companies.length) return res.status(400).json({ error: 'no companies' });
+  if (!companies?.length) return res.status(400).json({ error: '企業情報がありません' });
+
   const jobId = uuidv4();
   jobs[jobId] = { status: 'processing', previews: [], errors: [] };
-  (async () => {
+
+  ;(async () => {
+    const browser = await launchBrowser();
+
     for (const company of companies) {
-      if (!company.url || !company.url.startsWith('http')) {
-        jobs[jobId].errors.push({ company: company.name, error: 'invalid url' });
+      if (!company.url?.startsWith('http')) {
+        jobs[jobId].errors.push({ company: company.name, error: '無効なURLです' });
         continue;
       }
+      const context = await browser.newContext({
+        viewport: { width: 1280, height: 900 },
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+      });
+      const page = await context.newPage();
       try {
-        const { html } = await fetch2(company.url);
-        const { fields, action } = analyze(html);
-        const mapped = mapF(fields, senderInfo, messageTemplate.content);
+        await page.goto(company.url, { waitUntil: 'networkidle', timeout: 30000 });
+        await page.waitForTimeout(1500);
+
+        const fillResults = await detectAndFillForm(page, {
+          name:    senderInfo.name,
+          company: senderInfo.company,
+          email:   senderInfo.email,
+          phone:   senderInfo.phone,
+          message: messageTemplate.content,
+        });
+
+        const screenshotPath = path.join(screenshotDir, `${jobId}_${company.id}.png`);
+        await page.screenshot({ path: screenshotPath, fullPage: false });
+
         jobs[jobId].previews.push({
-          companyId: company.id,
-          companyName: company.name,
-          url: company.url,
-          mappedFields: mapped,
-          fillResults: {
-            filled: mapped.map((f) => ({ field: f.name || f.id, value: f.value })),
-            notFound: fields.filter((f) => !mapped.find((m) => m.name === f.name)).map((f) => f.name || f.id),
-          },
+          companyId:     company.id,
+          companyName:   company.name,
+          url:           company.url,
+          screenshotUrl: `/screenshots/${jobId}_${company.id}.png`,
+          fillResults,
           status: 'ready',
         });
       } catch (err) {
         jobs[jobId].errors.push({ company: company.name, error: err.message });
+      } finally {
+        await context.close();
       }
     }
+
+    await browser.close();
     jobs[jobId].status = 'done';
-  })();
+  })().catch(err => {
+    jobs[jobId].status = 'error';
+    jobs[jobId].fatalError = err.message;
+  });
+
   res.json({ jobId });
 });
-app.get('/api/job/:id', (req, res) => {
-  const job = jobs[req.params.id];
-  if (!job) return res.status(404).json({ error: 'not found' });
+
+// ── API: ジョブ確認 ───────────────────────────
+app.get('/api/job/:jobId', (req, res) => {
+  const job = jobs[req.params.jobId];
+  if (!job) return res.status(404).json({ error: 'ジョブが見つかりません' });
   res.json(job);
 });
+
+// ── API: 送信実行 ─────────────────────────────
 app.post('/api/submit', async (req, res) => {
   const { companies, senderInfo, messageTemplate, selectedCompanyIds } = req.body;
-  const targets = companies.filter((c) => selectedCompanyIds.includes(c.id));
+  const targets = companies.filter(c => selectedCompanyIds.includes(c.id));
   const results = [];
+
+  const browser = await launchBrowser();
+
   for (const company of targets) {
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 900 },
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+    });
+    const page = await context.newPage();
     try {
-      const { html } = await fetch2(company.url);
-      const { fields, action } = analyze(html);
-      const mapped = mapF(fields, senderInfo, messageTemplate.content);
-      if (!mapped.length) {
-        results.push({ companyId: company.id, companyName: company.name, status: 'no_fields', message: 'フィールド未検出' });
-        continue;
-      }
-      const formData = {};
-      mapped.forEach((f) => { if (f.name) formData[f.name] = f.value; });
-      const hiddenRe = /<input[^>]*type=["']hidden["'][^>]*>/gi;
-      let hm;
-      while ((hm = hiddenRe.exec(html)) !== null) {
-        const hn = (hm[0].match(/name=["']([^"']+)["']/i) || [])[1];
-        const hv = (hm[0].match(/value=["']([^"']*?)["']/i) || [])[1] || '';
-        if (hn) formData[hn] = hv;
-      }
-      const body = Object.entries(formData).map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
-      let submitUrl = action || company.url;
-      if (submitUrl.startsWith('/')) {
-        const base = new URL(company.url);
-        submitUrl = base.protocol + '//' + base.host + submitUrl;
-      }
-      const parsed = new URL(submitUrl);
-      const cl = parsed.protocol === 'https:' ? https : http;
-      await new Promise((resolve, reject) => {
-        const r = cl.request({ hostname: parsed.hostname, port: parsed.port, path: parsed.pathname + parsed.search, method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body), 'User-Agent': 'Mozilla/5.0', 'Referer': company.url } }, (r2) => { r2.resume(); resolve(r2.statusCode); });
-        r.on('error', reject);
-        r.write(body);
-        r.end();
+      await page.goto(company.url, { waitUntil: 'networkidle', timeout: 30000 });
+      await page.waitForTimeout(1500);
+
+      await detectAndFillForm(page, {
+        name:    senderInfo.name,
+        company: senderInfo.company,
+        email:   senderInfo.email,
+        phone:   senderInfo.phone,
+        message: messageTemplate.content,
       });
-      results.push({ companyId: company.id, companyName: company.name, status: 'submitted' });
+
+      const submitSelectors = [
+        'button[type="submit"]', 'input[type="submit"]',
+        'button:has-text("送信")', 'button:has-text("確認")',
+        'input[value*="送信"]', 'input[value*="確認"]',
+        '.submit-btn', '#submit',
+      ];
+
+      let submitted = false;
+      for (const sel of submitSelectors) {
+        try {
+          const btn = await page.$(sel);
+          if (btn && await btn.isVisible()) {
+            await btn.click();
+            await page.waitForTimeout(3000);
+            submitted = true;
+            const sp = path.join(screenshotDir, `submit_${company.id}_${Date.now()}.png`);
+            await page.screenshot({ path: sp });
+            results.push({
+              companyId:    company.id,
+              companyName:  company.name,
+              status:       'submitted',
+              screenshotUrl: `/screenshots/${path.basename(sp)}`,
+            });
+            break;
+          }
+        } catch (_) {}
+      }
+
+      if (!submitted) {
+        results.push({
+          companyId:   company.id,
+          companyName: company.name,
+          status:      'no_submit_button',
+          message:     '送信ボタンが見つかりませんでした。手動で送信してください。',
+        });
+      }
     } catch (err) {
       results.push({ companyId: company.id, companyName: company.name, status: 'error', error: err.message });
+    } finally {
+      await context.close();
     }
   }
+
+  await browser.close();
   res.json({ results });
 });
+
+// ── ヘルスチェック ────────────────────────────
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
+
+// ── SPA フォールバック ─────────────────────────
 app.get('*', (_, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-app.listen(PORT, () => console.log('ok'));
+
+app.listen(PORT, () => console.log(`🚀 FormBlast起動: http://localhost:${PORT}`));
