@@ -105,6 +105,11 @@ select option{background:var(--surface2);color:var(--text)}
 .del-btn-mini:hover{background:rgba(255,79,110,0.2)}
 .saved-indicator{font-size:.7rem;color:var(--success);display:none;margin-left:8px}
 .saved-indicator.show{display:inline}
+.tpl-sel{margin-top:10px}
+.tpl-sel select{font-size:.78rem;padding:8px 12px;border-radius:10px}
+.tpl-tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:.68rem;font-weight:700;background:rgba(79,124,255,0.12);color:var(--accent);margin-left:6px}
+.save-tpl-btn{padding:6px 14px;background:rgba(79,124,255,0.1);border:1px solid rgba(79,124,255,0.3);border-radius:8px;color:var(--accent);font-size:.78rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;margin-left:8px}
+.save-tpl-btn:hover{background:rgba(79,124,255,0.2)}
 .pattern-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .pattern-chip{padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:var(--surface2);color:var(--muted);transition:all .2s}
 .pattern-chip.sel{border-color:var(--accent);background:rgba(79,124,255,0.1);color:var(--accent)}
@@ -195,7 +200,12 @@ select option{background:var(--surface2);color:var(--text)}
 
       <!-- 本文プレビュー・編集 -->
       <div class="edit-area">
-        <label>✏️ 送信内容（編集可能）</label>
+        <div style="display:flex;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:8px">
+          <label style="margin:0">✏️ 送信内容（編集可能）</label>
+          <button class="save-tpl-btn" onclick="saveTemplateEdit()">💾 変更を保存</button>
+          <button class="save-tpl-btn" onclick="resetTemplateEdit()" style="background:rgba(245,166,35,0.1);border-color:rgba(245,166,35,0.3);color:var(--warning)">↩ 元に戻す</button>
+          <span class="saved-indicator" id="tplSaved">✓ 保存しました</span>
+        </div>
         <textarea id="msgEdit" style="min-height:260px"></textarea>
       </div>
     </div>
@@ -266,6 +276,39 @@ let companies=[], selPattern=0, jobId=null;
 // ===== ストレージキー =====
 const KEY_SENDER = 'fb_sender';
 const KEY_COMPANIES = 'fb_companies';
+const KEY_TEMPLATES = 'fb_templates';
+
+// ===== テンプレートの保存・読込 =====
+function saveTemplateEdit() {
+  const edited = document.getElementById('msgEdit').value;
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY_TEMPLATES)||'{}');
+    saved[selPattern] = edited;
+    localStorage.setItem(KEY_TEMPLATES, JSON.stringify(saved));
+    // patternの内容も更新
+    patterns[selPattern]._edited = edited;
+    showSaved('tplSaved');
+  } catch(e){}
+}
+
+function resetTemplateEdit() {
+  if (!confirm('保存した変更を破棄して元のテンプレートに戻しますか？')) return;
+  const saved = JSON.parse(localStorage.getItem(KEY_TEMPLATES)||'{}');
+  delete saved[selPattern];
+  localStorage.setItem(KEY_TEMPLATES, JSON.stringify(saved));
+  delete patterns[selPattern]._edited;
+  updatePreview();
+  toast('元のテンプレートに戻しました','info');
+}
+
+function loadTemplateEdits() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY_TEMPLATES)||'{}');
+    Object.keys(saved).forEach(k=>{
+      if (patterns[k]) patterns[k]._edited = saved[k];
+    });
+  } catch(e){}
+}
 
 // ===== 送信者情報の保存・読込 =====
 function saveSender() {
@@ -430,10 +473,11 @@ function detectPattern(url, siteName) {
   return null;
 }
 
-function buildMessage(patternId, descId) {
+function buildMessage(patternId, descId, ignoreEdited) {
   const p = patterns[patternId];
+  // 編集済みテンプレートがあればそれを使用
+  if (!ignoreEdited && p._edited) return p._edited;
   const desc = companyDescs[descId];
-  // 「株式会社リロクラブと申します。」の後に1行開けて会社概要を挿入
   const bodyWithDesc = p.body.replace(
     '株式会社リロクラブと申します。',
     '株式会社リロクラブと申します。\n\n' + desc
@@ -468,6 +512,7 @@ function init() {
   selPattern = 0;
   renderPatterns(null);
   updatePreview();
+  loadTemplateEdits();
   loadSender();
   loadCompanies();
   // 送信者情報の自動保存（入力のたびに）
@@ -582,6 +627,13 @@ function renderCompanies() {
             oninput="updateCompany('${c.id}','url',this.value)"/>
         </div>
       </div>
+      <div class="tpl-sel">
+        <label>使用テンプレート <span class="tpl-tag">${c.patternId!=null?patterns[c.patternId].label:'自動判定'}</span></label>
+        <select onchange="updateCompany('${c.id}','patternId',this.value===''?null:parseInt(this.value))">
+          <option value="" ${c.patternId==null?'selected':''}>🤖 自動判定</option>
+          ${patterns.map((p,pi)=>`<option value="${pi}" ${c.patternId===pi?'selected':''}>${p.label}</option>`).join('')}
+        </select>
+      </div>
     </div>`).join('');
   document.getElementById('companyList').innerHTML = html;
   document.getElementById('addBtn').style.display = companies.length>=10?'none':'flex';
@@ -609,7 +661,8 @@ async function loadPreview() {
   showLoader('フォームを解析中...','各企業サイトを開いています...');
   document.getElementById('prevBtn').disabled=true;
   try {
-    const r = await fetch(API+'/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companies:valid,senderInfo:getSenderInfo(),messageTemplate:{content:document.getElementById('msgEdit').value}})});
+    const companiesWithMsg = valid.map(c=>({...c, msgContent: getMsgForCompany(c)}));
+    const r = await fetch(API+'/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companies:companiesWithMsg,senderInfo:getSenderInfo(),messageTemplate:{content:document.getElementById('msgEdit').value}})});
     const d = await r.json();
     jobId=d.jobId;
     pollJob(d.jobId);
@@ -659,6 +712,11 @@ function renderPreviews(job) {
 
 // ===== 送信 =====
 function getSenderInfo(){return{name:document.getElementById('sName').value,company:document.getElementById('sCompany').value,email:document.getElementById('sEmail').value,phone:document.getElementById('sPhone').value};}
+function getMsgForCompany(company) {
+  const descId = parseInt(document.getElementById('companyDescSel').value);
+  const pid = (company.patternId!=null) ? company.patternId : selPattern;
+  return buildMessage(pid, descId);
+}
 function confirmSend() {
   const valid=companies.filter(c=>c.url);
   document.getElementById('mbody').innerHTML=`以下の<strong>${valid.length}社</strong>に送信します。<br><br>${valid.map(c=>`・${c.name||c.url}`).join('<br>')}<br><br>⚠️ この操作は取り消せません。`;
@@ -670,7 +728,8 @@ async function doSend() {
   showLoader('送信中...','各企業のフォームに送信しています...');
   const valid=companies.filter(c=>c.url);
   try {
-    const r=await fetch(API+'/api/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companies:valid,senderInfo:getSenderInfo(),messageTemplate:{content:document.getElementById('msgEdit').value},selectedCompanyIds:valid.map(c=>c.id)})});
+    const validWithMsg = valid.map(c=>({...c, msgContent: getMsgForCompany(c)}));
+    const r=await fetch(API+'/api/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companies:validWithMsg,senderInfo:getSenderInfo(),messageTemplate:{content:document.getElementById('msgEdit').value},selectedCompanyIds:valid.map(c=>c.id)})});
     const d=await r.json();
     hideLoader();
     showResults(d.results);
