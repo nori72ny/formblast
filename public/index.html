@@ -114,6 +114,12 @@ select option{background:var(--surface2);color:var(--text)}
 .mode-form .active{border-color:var(--accent);color:var(--accent)}
 .mode-email .active{border-color:var(--success);color:var(--success)}
 .email-input-wrap{background:rgba(34,211,160,0.05);border:1px solid rgba(34,211,160,0.2);border-radius:10px;padding:10px 12px;margin-top:8px}
+.bml-box{background:var(--surface2);border:1.5px solid rgba(79,124,255,0.3);border-radius:16px;padding:20px;margin-top:16px}
+.bml-title{font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;margin-bottom:8px;color:var(--accent)}
+.bml-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;font-size:.82rem;line-height:1.6}
+.bml-num{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:.72rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.bml-code{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:.72rem;font-family:monospace;word-break:break-all;line-height:1.5;color:var(--text);max-height:80px;overflow-y:auto;margin:8px 0}
+.bml-copy-btn{width:100%;padding:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:10px;color:#fff;font-family:'Noto Sans JP',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;margin-top:4px}
 .tpl-sel{margin-top:10px}
 .tpl-sel select{font-size:.78rem;padding:8px 12px;border-radius:10px}
 .tpl-tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:.68rem;font-weight:700;background:rgba(79,124,255,0.12);color:var(--accent);margin-left:6px}
@@ -154,6 +160,32 @@ select option{background:var(--surface2);color:var(--text)}
       <div class="fg"><label>会社名 *</label><input type="text" id="sCompany" placeholder="株式会社リロクラブ"/></div>
       <div class="fg"><label>メールアドレス *</label><input type="email" id="sEmail" placeholder="yamada@example.com"/></div>
       <div class="fg"><label>電話番号</label><input type="tel" id="sPhone" placeholder="03-1234-5678"/></div>
+    </div>
+    <div class="bml-box" id="bmlBox" style="display:none">
+      <div class="bml-title">⚡ フォーム自動入力コード（Chrome対応）</div>
+      <p style="font-size:.8rem;color:var(--muted);margin-bottom:14px">企業フォームを開いた状態でアドレスバーにコードを貼り付けてEnterを押すと、お名前・会社名・メール・電話を自動入力します。</p>
+
+      <div style="background:rgba(79,124,255,0.06);border:1px solid rgba(79,124,255,0.2);border-radius:10px;padding:12px;margin-bottom:14px">
+        <div style="font-size:.78rem;font-weight:700;color:var(--accent);margin-bottom:8px">📱 Chrome（iPad）での使い方</div>
+        <div class="bml-step"><div class="bml-num">1</div><div>「コードをコピー」をタップ</div></div>
+        <div class="bml-step"><div class="bml-num">2</div><div>手動送信ボタンで企業フォームを開く</div></div>
+        <div class="bml-step"><div class="bml-num">3</div><div>Chromeのアドレスバーをタップ → 全選択 → 貼り付け → 実行（Go）</div></div>
+        <div class="bml-step"><div class="bml-num">4</div><div>✅ 自動入力完了！お問い合わせ内容だけコピペ</div></div>
+      </div>
+
+      <div style="background:rgba(162,89,255,0.06);border:1px solid rgba(162,89,255,0.2);border-radius:10px;padding:12px;margin-bottom:14px">
+        <div style="font-size:.78rem;font-weight:700;color:var(--accent2);margin-bottom:8px">🔖 Safari（iPad）でブックマーク登録する場合</div>
+        <div class="bml-step"><div class="bml-num">1</div><div>「コードをコピー」をタップ</div></div>
+        <div class="bml-step"><div class="bml-num">2</div><div>Safariで任意のページを <strong>ブックマーク登録</strong>（名前は「自動入力」など）</div></div>
+        <div class="bml-step"><div class="bml-num">3</div><div>ブックマーク一覧 → 長押し → 編集 → URLを削除してコードを貼り付けて保存</div></div>
+        <div class="bml-step"><div class="bml-num">4</div><div>企業フォームを開いた状態でブックマークをタップ → 自動入力！</div></div>
+      </div>
+
+      <div class="bml-code" id="bmlCode">（送信者情報を入力するとコードが生成されます）</div>
+      <button class="bml-copy-btn" onclick="copyBml()">📋 コードをコピー</button>
+    </div>
+    <div style="margin-top:12px">
+      <button class="btn btn-s btn-sm" onclick="toggleBml()" id="bmlToggleBtn">⚡ フォーム自動入力コードを設定する</button>
     </div>
     <div class="abar"><button class="btn btn-p btn-bl" onclick="nextStep(1)">次へ　→</button></div>
   </div>
@@ -274,7 +306,7 @@ select option{background:var(--surface2);color:var(--text)}
 
 <div class="modal" id="modal">
   <div class="mbox">
-    <div class="mtitle">⚠️ 送信確認</div>
+    <div class="mtitle" id="mtitle">⚠️ 送信確認</div>
     <div class="mbody" id="mbody"></div>
     <div class="mactions">
       <button class="btn btn-s" style="flex:1" onclick="closeModal()">キャンセル</button>
@@ -336,6 +368,8 @@ function saveSender() {
   };
   localStorage.setItem(KEY_SENDER, JSON.stringify(data));
   showSaved('senderSaved');
+  // ブックマークレットを自動更新
+  if (document.getElementById('bmlBox').style.display !== 'none') generateBml();
 }
 
 function loadSender() {
@@ -824,6 +858,31 @@ function renderPreviews(job) {
 }
 
 // ===== 送信 =====
+// ===== ブックマークレット =====
+function generateBml() {
+  const info = getSenderInfo();
+  if (!info.name && !info.email) return;
+  const code = generateBmlCode(info);
+  document.getElementById('bmlCode').textContent = code;
+}
+
+function toggleBml() {
+  const box = document.getElementById('bmlBox');
+  const btn = document.getElementById('bmlToggleBtn');
+  const isShown = box.style.display !== 'none';
+  box.style.display = isShown ? 'none' : 'block';
+  btn.textContent = isShown ? '🔖 自動入力ブックマークレットを設定する' : '▲ 閉じる';
+  if (!isShown) generateBml();
+}
+
+function copyBml() {
+  const code = document.getElementById('bmlCode').textContent;
+  if (code.includes('送信者情報を入力')) return toast('先に送信者情報を入力してください','error');
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(code).then(() => toast('コードをコピーしました！Safariのブックマーク編集画面に貼り付けてください','success'));
+  }
+}
+
 // ===== 送信モード =====
 let sendMode = 'form'; // 'form' or 'email'
 
@@ -850,18 +909,68 @@ function getSenderInfo(){return{name:document.getElementById('sName').value,comp
 function openManual(url, encodedMsg) {
   const msg = decodeURIComponent(encodedMsg);
   const info = getSenderInfo();
-  // クリップボードにコピーして新しいタブでフォームを開く
-  const copyText = msg;
+
+  // 自動入力コードを生成してクリップボードにコピー
+  const bmlCode = generateBmlCode(info);
+
+  const fields = [
+    { label: 'お名前',           value: info.name },
+    { label: '会社名',           value: info.company },
+    { label: 'メールアドレス',   value: info.email },
+    { label: '電話番号',         value: info.phone },
+    { label: 'お問い合わせ内容', value: msg },
+  ].filter(f => f.value);
+
+  const rows = fields.map(f => `
+    <div style="margin-bottom:10px;background:var(--surface2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)">
+      <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px;font-weight:600">${f.label}</div>
+      <div style="font-size:.82rem;white-space:pre-wrap;word-break:break-all;line-height:1.6;max-height:80px;overflow-y:auto">${f.value.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+      <button onclick="copyText(this,'${encodeURIComponent(f.value)}')" style="margin-top:6px;padding:3px 10px;background:rgba(79,124,255,0.1);border:1px solid rgba(79,124,255,0.3);border-radius:6px;color:var(--accent);font-size:.7rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif">📋 コピー</button>
+    </div>`).join('');
+
+  document.getElementById('mtitle').textContent = '🖐 手動送信ガイド';
+  document.getElementById('mbody').innerHTML = `
+    <div style="background:rgba(79,124,255,0.08);border:1px solid rgba(79,124,255,0.2);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:.8rem">
+      <strong style="color:var(--accent)">⚡ Chrome自動入力の手順：</strong><br>
+      1. 「フォームを開く＋コードをコピー」をタップ<br>
+      2. フォームが開いたらアドレスバーをタップ<br>
+      3. 全選択して貼り付け → 実行（Go）<br>
+      4. お名前・会社・メール・電話が自動入力される
+    </div>
+    <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px">または各項目を個別にコピーして貼り付け：</div>
+    ${rows}`;
+
+  document.querySelector('.mactions').innerHTML = `
+    <button class="btn btn-s" style="flex:0 0 auto;padding:12px 16px" onclick="closeModal()">閉じる</button>
+    <button class="btn btn-p" style="flex:1" onclick="openFormWithCode('${url}','${encodeURIComponent(bmlCode)}')">⚡ フォームを開く＋コードをコピー</button>`;
+
+  document.getElementById('modal').classList.add('active');
+}
+
+function generateBmlCode(info) {
+  return `javascript:(function(){var fields=[{sel:'input[type=text][name*="name" i],input[name*="氏名"],input[name*="名前"],input[placeholder*="名前"],input[placeholder*="氏名"],input[id*="name" i]',val:${JSON.stringify(info.name||'')}},{sel:'input[name*="company" i],input[name*="会社"],input[placeholder*="会社"],input[id*="company" i]',val:${JSON.stringify(info.company||'')}},{sel:'input[type=email],input[name*="email" i],input[name*="mail" i],input[placeholder*="メール"],input[id*="email" i]',val:${JSON.stringify(info.email||'')}},{sel:'input[type=tel],input[name*="tel" i],input[name*="phone" i],input[placeholder*="電話"],input[id*="tel" i]',val:${JSON.stringify(info.phone||'')}}];var n=0;fields.forEach(function(f){if(!f.val)return;var els=document.querySelectorAll(f.sel);for(var i=0;i<els.length;i++){var el=els[i];if(el.offsetParent!==null&&!el.readOnly&&!el.disabled){try{var d=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value');if(d&&d.set){d.set.call(el,f.val);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}else{el.value=f.val;}}catch(e){el.value=f.val;}n++;break;}}});alert('✅ '+n+'項目を自動入力しました！');})();`;
+}
+
+function openFormWithCode(url, encodedCode) {
+  const code = decodeURIComponent(encodedCode);
   if (navigator.clipboard) {
-    navigator.clipboard.writeText(copyText).then(()=>{
-      toast('送信内容をコピーしました。フォームを開きます。','success');
-    }).catch(()=>{
-      toast('フォームを開きます。送信内容を手動でコピーしてください。','info');
+    navigator.clipboard.writeText(code).then(() => {
+      toast('✅ 自動入力コードをコピーしました！アドレスバーに貼り付けてください', 'success');
     });
-  } else {
-    toast('フォームを開きます。送信内容を手動でコピーしてください。','info');
   }
-  setTimeout(()=>window.open(url, '_blank'), 800);
+  closeModal();
+  setTimeout(() => window.open(url, '_blank'), 300);
+}
+
+function copyText(btn, encoded) {
+  const text = decodeURIComponent(encoded);
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = '✓ コピー済み';
+      btn.style.color = 'var(--success)';
+      setTimeout(() => { btn.textContent = '📋 コピー'; btn.style.color = 'var(--accent)'; }, 2000);
+    });
+  }
 }
 function getMsgForCompany(company) {
   const descId = parseInt(document.getElementById('companyDescSel').value);
@@ -880,6 +989,7 @@ function confirmSend() {
   if (sendMode === 'email') {
     const noEmail = targets.filter(c => !c.email);
     if (noEmail.length) return toast(noEmail.map(c=>c.name||'企業').join('、') + ' のメールアドレスを入力してください', 'error');
+    document.getElementById('mtitle').textContent='📧 メール送信確認';
     document.getElementById('mbody').innerHTML=`以下の<strong>${targets.length}社</strong>にメールを送信します。<br><br>${targets.map(c=>`・${c.name||c.url}（${c.email}）`).join('<br>')}<br><br>⚠️ この操作は取り消せません。`;
   } else {
     const noUrl = targets.filter(c => !c.url);
@@ -887,11 +997,19 @@ function confirmSend() {
     const sentTargets = targets.filter(c => c.sent);
     let warning = '';
     if (sentTargets.length) warning = `<br><br><span style="color:var(--warning)">⚠️ 送付済みが${sentTargets.length}社含まれています</span>`;
+    document.getElementById('mtitle').textContent='🚀 送信確認';
     document.getElementById('mbody').innerHTML=`以下の<strong>${targets.length}社</strong>のフォームに送信します。<br><br>${targets.map(c=>`・${c.name||c.url}`).join('<br>')}${warning}<br><br>⚠️ この操作は取り消せません。`;
   }
   document.getElementById('modal').classList.add('active');
 }
-function closeModal(){document.getElementById('modal').classList.remove('active');}
+function closeModal(){
+  document.getElementById('modal').classList.remove('active');
+  // ボタンをデフォルトに戻す
+  document.querySelector('.mactions').innerHTML = `
+    <button class="btn btn-s" style="flex:1" onclick="closeModal()">キャンセル</button>
+    <button class="btn btn-d" style="flex:1" onclick="doSend()">送信する</button>`;
+  document.getElementById('mtitle').textContent = '⚠️ 送信確認';
+}
 async function doSend() {
   closeModal();
   const targets = getTargetCompanies();
