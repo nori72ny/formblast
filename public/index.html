@@ -698,8 +698,9 @@ function buildSummary() {
 
 // ===== プレビュー =====
 async function loadPreview() {
-  const valid = companies.filter(c=>c.url);
-  if (!valid.length) return toast('企業URLを設定してください','error');
+  const checkedIds = [...document.querySelectorAll('.cchk:checked')].map(el => el.dataset.id);
+  const valid = companies.filter(c => c.url && checkedIds.includes(c.id) && !c.sent);
+  if (!valid.length) return toast('プレビュー対象の企業がありません。未送付かつチェック済みの企業を選択してください。','error');
   showLoader('フォームを解析中...','各企業サイトを開いています...');
   document.getElementById('prevBtn').disabled=true;
   try {
