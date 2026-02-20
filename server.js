@@ -85,16 +85,27 @@ function analyzeForm(html, baseUrl) {
 }
 
 function mapFields(fields, info, msg) {
-  return fields.map(f => {
+  const mapped = fields.map(f => {
     const k = [f.name, f.id, f.ph, f.label].join(' ').toLowerCase();
     let v = '';
-    if      (/name|氏名|名前|お名前/.test(k) && !/company|会社|企業/.test(k)) v = info.name;
-    else if (/company|会社|企業|法人|組織/.test(k)) v = info.company;
-    else if (/email|mail|メール/.test(k)) v = info.email;
-    else if (/tel|phone|電話|携帯/.test(k)) v = info.phone;
-    else if (/message|content|body|問い合わせ|内容|要望|質問|備考/.test(k)) v = msg;
+    if      (/name|氏名|名前|お名前|ふりがな|フリガナ|担当/.test(k) && !/company|会社|企業/.test(k)) v = info.name;
+    else if (/company|会社|企業|法人|組織|団体/.test(k)) v = info.company;
+    else if (/email|mail|メール|e.mail/.test(k)) v = info.email;
+    else if (/tel|phone|電話|携帯|fax/.test(k)) v = info.phone;
+    else if (/message|content|body|問い合わせ|内容|要望|質問|備考|ご用件|用件|件名|subject|詳細|コメント|comment|text/.test(k)) v = msg;
     return v ? { ...f, value: v } : null;
   }).filter(Boolean);
+
+  // 本文がどのフィールドにもマッピングされなかった場合
+  // → textareaがあれば最初のtextareaに本文を入れる
+  const msgMapped = mapped.some(f => f.tag === 'textarea' || /message|content|body|問い合わせ|内容|要望|質問|備考|ご用件|用件|件名|subject|詳細/.test([f.name,f.id,f.ph,f.label].join(' ').toLowerCase()));
+  if (!msgMapped) {
+    const firstTextarea = fields.find(f => f.tag === 'textarea');
+    if (firstTextarea && !mapped.find(m => m.name === firstTextarea.name && m.id === firstTextarea.id)) {
+      mapped.push({ ...firstTextarea, value: msg, autoFallback: true });
+    }
+  }
+  return mapped;
 }
 
 app.post('/api/preview', async (req, res) => {
