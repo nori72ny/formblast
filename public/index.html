@@ -724,45 +724,61 @@ async function pollJob(id) {
 }
 function renderPreviews(job) {
   const msgContent = document.getElementById('msgEdit').value;
+  const escaped = msgContent.replace(/</g,'&lt;').replace(/>/g,'&gt;');
   let h='';
+
   for (const p of job.previews) {
-    const filled=(p.fillResults?.filled||[]);
-    const nf=(p.fillResults?.notFound||[]);
-    const isManual = p.needsManual;
-    h+=`<div class="preview-item">
+    const filled = p.fillResults?.filled || [];
+    const nf     = p.fillResults?.notFound || [];
+    const isFullManual = p.needsManual; // 全部手動
+    const hasUnfilled  = nf.length > 0; // 一部未入力
+    const showManualBtn = isFullManual || hasUnfilled;
+
+    let badgeClass = 'ready';
+    let badgeText  = '✅ 自動入力OK';
+    if (isFullManual)       { badgeClass='manual'; badgeText='⚠️ 手動送信が必要'; }
+    else if (hasUnfilled)   { badgeClass='manual'; badgeText='⚠️ 一部手動が必要'; }
+
+    h += `<div class="preview-item">
       <div class="pitem-h">
         <div class="pname">${p.companyName||p.url}</div>
-        <span class="sbadge ${isManual?'manual':'ready'}">${isManual?'⚠️ 手動推奨':'解析完了'}</span>
+        <span class="sbadge ${badgeClass}">${badgeText}</span>
       </div>
       <div class="pdetail">
-        ${isManual
-          ? `<div style="color:var(--warning);margin-bottom:12px;font-size:.82rem">⚠️ このフォームは自動入力に対応していません。手動送信をご利用ください。</div>`
-          : `<div style="margin-bottom:8px">入力フィールド：${filled.map(f=>`<span class="ftag ok">✓ ${f.field}</span>`).join('')}${nf.map(f=>`<span class="ftag ng">✕ ${f}</span>`).join('')}</div>`
-        }
-        <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
-          <div style="font-size:.75rem;color:var(--accent);font-weight:700;margin-bottom:8px">📄 送信内容プレビュー</div>
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:.8rem;line-height:1.8;white-space:pre-wrap;color:var(--text)">${msgContent.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+        <div style="margin-bottom:10px">
+          ${filled.map(f=>`<span class="ftag ok">✓ ${f.field}</span>`).join('')}
+          ${nf.map(f=>`<span class="ftag ng">✕ ${f}（未検出）</span>`).join('')}
         </div>
-        ${isManual&&p.url ? `<div style="margin-top:12px"><button class="manual-btn" onclick="openManual('${p.url}','${encodeURIComponent(msgContent)}')">🖐 手動送信（フォームを開く）</button></div>` : ''}
+        ${isFullManual ? `<div style="color:var(--warning);font-size:.82rem;margin-bottom:10px">⚠️ フォームフィールドを自動検出できませんでした。手動で送信してください。</div>` : ''}
+        ${hasUnfilled && !isFullManual ? `<div style="color:var(--warning);font-size:.82rem;margin-bottom:10px">⚠️ 上記 ✕ の項目は自動入力できません。手動送信ボタンでフォームを開き、その項目だけ手動で入力してください。</div>` : ''}
+        ${showManualBtn ? `<button class="manual-btn" onclick="openManual('${p.url}','${encodeURIComponent(msgContent)}')">🖐 手動送信（フォームを開く＋内容コピー）</button>` : ''}
+        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+          <div style="font-size:.75rem;color:var(--accent);font-weight:700;margin-bottom:8px">📄 送信内容（この内容で送信されます）</div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:.8rem;line-height:1.8;white-space:pre-wrap;color:var(--text)">${escaped}</div>
+        </div>
       </div>
     </div>`;
   }
+
   for (const e of job.errors) {
-    const url = e.url||'';
-    h+=`<div class="preview-item"><div class="pitem-h"><div class="pname">${e.company}</div><span class="sbadge error">エラー</span></div>
-    <div class="pdetail">
-      <div style="color:var(--danger);margin-bottom:12px">${e.error}</div>
-      <div style="background:var(--surface);border:1px solid rgba(255,79,110,0.2);border-radius:10px;padding:10px;font-size:.78rem;color:var(--muted);margin-bottom:12px">
-        💡 URLが正しいか確認してください。<br>例: https://example.com/contact
+    const url = e.url || '';
+    h += `<div class="preview-item">
+      <div class="pitem-h"><div class="pname">${e.company}</div><span class="sbadge error">❌ エラー</span></div>
+      <div class="pdetail">
+        <div style="color:var(--danger);margin-bottom:10px">${e.error}</div>
+        <div style="background:var(--surface);border:1px solid rgba(255,79,110,0.15);border-radius:10px;padding:10px;font-size:.78rem;color:var(--muted);margin-bottom:12px">
+          💡 URLが正しいか確認してください（例: https://example.com/contact）
+        </div>
+        ${url ? `<button class="manual-btn" onclick="openManual('${url}','${encodeURIComponent(msgContent)}')">🖐 手動送信（フォームを開く＋内容コピー）</button>` : ''}
+        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+          <div style="font-size:.75rem;color:var(--accent);font-weight:700;margin-bottom:8px">📄 送信予定内容</div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:.8rem;line-height:1.8;white-space:pre-wrap;color:var(--text)">${escaped}</div>
+        </div>
       </div>
-      ${url ? `<button class="manual-btn" onclick="openManual('${url}','${encodeURIComponent(msgContent)}')">🖐 手動送信（フォームを開く）</button>` : ''}
-      <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px">
-        <div style="font-size:.75rem;color:var(--accent);font-weight:700;margin-bottom:8px">📄 送信予定内容</div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:.8rem;line-height:1.8;white-space:pre-wrap;color:var(--text)">${msgContent.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
-      </div>
-    </div></div>`;
+    </div>`;
   }
-  document.getElementById('previewArea').innerHTML=h||'<p style="color:var(--muted);text-align:center;padding:20px">結果がありません</p>';
+
+  document.getElementById('previewArea').innerHTML = h || '<p style="color:var(--muted);text-align:center;padding:20px">結果がありません</p>';
 }
 
 // ===== 送信 =====
