@@ -476,6 +476,30 @@ function detectPattern(url, siteName) {
   return null;
 }
 
+// サイトのHTMLを取得して業態を詳細判定
+async function autoDetectPattern(company) {
+  if (!company.url || company.patternId != null) return;
+  try {
+    const res = await fetch(API + '/api/detect-pattern', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: company.url })
+    });
+    const data = await res.json();
+    if (data.patternId != null) {
+      company.patternId = data.patternId;
+      company.patternAuto = true;
+      saveCompanies();
+      // UIを更新
+      const tag = document.getElementById('tpl-tag-' + company.id);
+      const sel = document.getElementById('tpl-sel-' + company.id);
+      if (tag) tag.textContent = '🤖 ' + patterns[data.patternId].label;
+      if (sel) sel.value = String(data.patternId);
+      toast(company.name + ': ' + patterns[data.patternId].label + ' を自動選択', 'info');
+    }
+  } catch(e) {}
+}
+
 function buildMessage(patternId, descId, ignoreEdited) {
   const p = patterns[patternId];
   // 編集済みテンプレートがあればそれを使用
@@ -554,15 +578,14 @@ function nextStep(n) {
     const valid = companies.filter(c=>c.url);
     if (!valid.length) return toast('企業URLを少なくとも1件入力してください','error');
 
-    // AI業態判定
+    // URLベース簡易判定（既に自動判定済みの企業を優先）
     let autoId = null;
     for (const c of valid) {
+      if (c.patternId != null) { autoId = c.patternId; break; }
       const id = detectPattern(c.url, c.name);
       if (id !== null) { autoId = id; break; }
     }
-    if (autoId !== null && autoId !== selPattern) {
-      selPattern = autoId;
-    }
+    if (autoId !== null) selPattern = autoId;
     renderPatterns(autoId);
     updatePreview();
   }
@@ -612,7 +635,7 @@ function renderCompanies() {
   html += companies.map((c,i)=>`
     <div class="ccard ${c.sent?'sent':''}" id="cc_${c.id}">
       <div class="ccard-h">
-        <input type="checkbox" class="chk cchk" data-id="${c.id}">
+        <input type="checkbox" class="chk cchk" data-id="${c.id}" ${c.sent?'':'checked'} title="${c.sent?'送付済みのため除外':'配信対象'}">
         <div class="cnum">${i+1}</div>
         <div class="cname" id="cn_${c.id}">${c.name||'企業 '+(i+1)}</div>
         ${c.sent
@@ -620,6 +643,10 @@ function renderCompanies() {
           : `<span class="unsent-badge">未送付</span>`}
         <button class="rbtn" onclick="removeCompany('${c.id}')">✕</button>
       </div>
+      ${c.sent ? `<div style="font-size:.72rem;color:var(--muted);padding:0 4px 8px;display:flex;align-items:center;gap:6px">
+        <span>⚠️ 送付済のため配信対象外。再送する場合はチェックを入れてください。</span>
+        <button onclick="resetSent('${c.id}')" style="font-size:.68rem;padding:2px 8px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);cursor:pointer">送付済解除</button>
+      </div>` : ''}
       <div class="cfields">
         <div class="fg"><label>会社名</label>
           <input type="text" value="${c.name}" placeholder="株式会社○○"
@@ -631,30 +658,42 @@ function renderCompanies() {
         </div>
       </div>
       <div class="tpl-sel">
-        <label>使用テンプレート <span class="tpl-tag">${c.patternId!=null?patterns[c.patternId].label:'自動判定'}</span></label>
-        <select onchange="updateCompany('${c.id}','patternId',this.value===''?null:parseInt(this.value))">
-          <option value="" ${c.patternId==null?'selected':''}>🤖 自動判定</option>
+        <label>使用テンプレート <span class="tpl-tag" id="tpl-tag-${c.id}">${c.patternId!=null?patterns[c.patternId].label:'🤖 自動判定中...'}</span></label>
+        <select id="tpl-sel-${c.id}" onchange="updateCompany('${c.id}','patternId',this.value===''?null:parseInt(this.value));document.getElementById('tpl-tag-${c.id}').textContent=this.value===''?'🤖 自動判定中...':patterns[parseInt(this.value)].label">
+          <option value="" ${c.patternId==null?'selected':''}>🤖 自動判定（サイトから業態を判断）</option>
           ${patterns.map((p,pi)=>`<option value="${pi}" ${c.patternId===pi?'selected':''}>${p.label}</option>`).join('')}
         </select>
       </div>
     </div>`).join('');
   document.getElementById('companyList').innerHTML = html;
   document.getElementById('addBtn').style.display = companies.length>=10?'none':'flex';
+
+  // URL入力済みで自動判定モードの企業はサイト解析してテンプレート自動設定
+  companies.forEach(c => {
+    if (c.url && c.patternId == null) autoDetectPattern(c);
+  });
 }
 
 function toggleAllChk(checked) {
-  document.querySelectorAll('.cchk').forEach(el=>el.checked=checked);
+  document.querySelectorAll('.cchk').forEach(el => el.checked = checked);
+}
+
+function resetSent(id) {
+  const c = companies.find(c => c.id === id);
+  if (c) { c.sent = false; c.sentAt = ''; renderCompanies(); saveCompanies(); toast('送付済みを解除しました', 'info'); }
 }
 
 // ===== 送信概要 =====
 function buildSummary() {
-  const valid = companies.filter(c=>c.url);
+  const checkedIds = [...document.querySelectorAll('.cchk:checked')].map(el => el.dataset.id);
+  const targets = companies.filter(c => c.url && checkedIds.includes(c.id));
+  const skipped = companies.filter(c => c.url && !checkedIds.includes(c.id));
   document.getElementById('summaryCard').style.display='block';
   document.getElementById('summaryBody').innerHTML =
     `<strong style="color:var(--text)">送信者：</strong>${document.getElementById('sName').value}（${document.getElementById('sCompany').value}）<br>
-     <strong style="color:var(--text)">パターン：</strong>${patterns[selPattern].label}<br>
-     <strong style="color:var(--text)">送信先：</strong>${valid.map(c=>c.name||c.url).join('、')}<br>
-     <strong style="color:var(--text)">対象社数：</strong>${valid.length}社`;
+     <strong style="color:var(--text)">配信対象：</strong>${targets.map(c=>`${c.name||c.url}（${c.patternId!=null?patterns[c.patternId].label:'自動'}）`).join('、') || 'なし'}<br>
+     <strong style="color:var(--text)">対象社数：</strong>${targets.length}社
+     ${skipped.length ? `<br><span style="color:var(--muted)">除外（未チェック/送付済）：${skipped.map(c=>c.name||c.url).join('、')}</span>` : ''}`;
 }
 
 // ===== プレビュー =====
@@ -750,19 +789,28 @@ function getMsgForCompany(company) {
   const pid = (company.patternId!=null) ? company.patternId : selPattern;
   return buildMessage(pid, descId);
 }
+function getTargetCompanies() {
+  const checkedIds = [...document.querySelectorAll('.cchk:checked')].map(el => el.dataset.id);
+  return companies.filter(c => c.url && checkedIds.includes(c.id));
+}
+
 function confirmSend() {
-  const valid=companies.filter(c=>c.url);
-  document.getElementById('mbody').innerHTML=`以下の<strong>${valid.length}社</strong>に送信します。<br><br>${valid.map(c=>`・${c.name||c.url}`).join('<br>')}<br><br>⚠️ この操作は取り消せません。`;
+  const targets = getTargetCompanies();
+  if (!targets.length) return toast('配信対象の企業を選択してください（チェックを入れてください）', 'error');
+  const sentTargets = targets.filter(c => c.sent);
+  let warning = '';
+  if (sentTargets.length) warning = `<br><br><span style="color:var(--warning)">⚠️ 送付済みの企業が${sentTargets.length}社含まれています：${sentTargets.map(c=>c.name).join('、')}</span>`;
+  document.getElementById('mbody').innerHTML=`以下の<strong>${targets.length}社</strong>に送信します。<br><br>${targets.map(c=>`・${c.name||c.url} ${c.sent?'（送付済）':''}`).join('<br>')}${warning}<br><br>⚠️ この操作は取り消せません。`;
   document.getElementById('modal').classList.add('active');
 }
 function closeModal(){document.getElementById('modal').classList.remove('active');}
 async function doSend() {
   closeModal();
   showLoader('送信中...','各企業のフォームに送信しています...');
-  const valid=companies.filter(c=>c.url);
+  const targets = getTargetCompanies();
   try {
-    const validWithMsg = valid.map(c=>({...c, msgContent: getMsgForCompany(c)}));
-    const r=await fetch(API+'/api/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companies:validWithMsg,senderInfo:getSenderInfo(),messageTemplate:{content:document.getElementById('msgEdit').value},selectedCompanyIds:valid.map(c=>c.id)})});
+    const validWithMsg = targets.map(c=>({...c, msgContent: getMsgForCompany(c)}));
+    const r=await fetch(API+'/api/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companies:validWithMsg,senderInfo:getSenderInfo(),messageTemplate:{content:document.getElementById('msgEdit').value},selectedCompanyIds:targets.map(c=>c.id)})});
     const d=await r.json();
     hideLoader();
     showResults(d.results);
