@@ -182,6 +182,70 @@ app.post('/api/submit', async (req, res) => {
   res.json({ results });
 });
 
+// ── メール直送API ────────────────────────────
+app.post('/api/send-email', async (req, res) => {
+  const { companies, senderInfo, messageTemplate } = req.body;
+  if (!companies?.length) return res.status(400).json({ error: '企業情報がありません' });
+  if (!process.env.RESEND_API_KEY) return res.status(500).json({ error: 'RESEND_API_KEY が設定されていません' });
+
+  const results = [];
+
+  for (const company of companies) {
+    if (!company.email) {
+      results.push({ companyId: company.id, companyName: company.name, status: 'error', error: 'メールアドレスが未入力です' });
+      continue;
+    }
+    try {
+      const msg = company.msgContent || messageTemplate.content;
+      const subject = msg.split('\n')[0].trim() || 'お問い合わせ';
+      const bodyText = msg;
+      const bodyHtml = msg.replace(/\n/g, '<br>').replace(/ /g, '&nbsp;');
+
+      const payload = JSON.stringify({
+        from: `${senderInfo.name} <onboarding@resend.dev>`,
+        to: [company.email],
+        reply_to: senderInfo.email,
+        subject,
+        text: bodyText,
+        html: `<div style="font-family:sans-serif;font-size:14px;line-height:1.8">${bodyHtml}</div>`,
+      });
+
+      const result = await new Promise((resolve, reject) => {
+        const req2 = https.request({
+          hostname: 'api.resend.com',
+          path: '/emails',
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + process.env.RESEND_API_KEY,
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payload),
+          },
+        }, (r) => {
+          let d = '';
+          r.on('data', c => d += c);
+          r.on('end', () => {
+            try { resolve({ status: r.statusCode, body: JSON.parse(d) }); }
+            catch(e) { resolve({ status: r.statusCode, body: d }); }
+          });
+        });
+        req2.on('error', reject);
+        req2.write(payload);
+        req2.end();
+      });
+
+      if (result.status === 200 || result.status === 201) {
+        results.push({ companyId: company.id, companyName: company.name, status: 'sent', email: company.email });
+      } else {
+        results.push({ companyId: company.id, companyName: company.name, status: 'error', error: JSON.stringify(result.body), email: company.email });
+      }
+    } catch(err) {
+      results.push({ companyId: company.id, companyName: company.name, status: 'error', error: err.message });
+    }
+  }
+
+  res.json({ results });
+});
+
 // ── 業態自動判定API ──────────────────────────
 app.post('/api/detect-pattern', async (req, res) => {
   const { url } = req.body;
