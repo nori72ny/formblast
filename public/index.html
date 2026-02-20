@@ -105,6 +105,9 @@ select option{background:var(--surface2);color:var(--text)}
 .del-btn-mini:hover{background:rgba(255,79,110,0.2)}
 .saved-indicator{font-size:.7rem;color:var(--success);display:none;margin-left:8px}
 .saved-indicator.show{display:inline}
+.manual-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:rgba(245,166,35,0.1);border:1.5px solid rgba(245,166,35,0.4);border-radius:10px;color:var(--warning);font-size:.82rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all .2s}
+.manual-btn:hover{background:rgba(245,166,35,0.2)}
+.sbadge.manual{background:rgba(245,166,35,0.15);color:var(--warning)}
 .tpl-sel{margin-top:10px}
 .tpl-sel select{font-size:.78rem;padding:8px 12px;border-radius:10px}
 .tpl-tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:.68rem;font-weight:700;background:rgba(79,124,255,0.12);color:var(--accent);margin-left:6px}
@@ -686,22 +689,35 @@ function renderPreviews(job) {
   for (const p of job.previews) {
     const filled=(p.fillResults?.filled||[]);
     const nf=(p.fillResults?.notFound||[]);
+    const isManual = p.needsManual;
     h+=`<div class="preview-item">
-      <div class="pitem-h"><div class="pname">${p.companyName||p.url}</div><span class="sbadge ready">解析完了</span></div>
+      <div class="pitem-h">
+        <div class="pname">${p.companyName||p.url}</div>
+        <span class="sbadge ${isManual?'manual':'ready'}">${isManual?'⚠️ 手動推奨':'解析完了'}</span>
+      </div>
       <div class="pdetail">
-        <div style="margin-bottom:8px">入力フィールド：${filled.map(f=>`<span class="ftag ok">✓ ${f.field}</span>`).join('')}${nf.map(f=>`<span class="ftag ng">✕ ${f}</span>`).join('')}</div>
+        ${isManual
+          ? `<div style="color:var(--warning);margin-bottom:12px;font-size:.82rem">⚠️ このフォームは自動入力に対応していません。手動送信をご利用ください。</div>`
+          : `<div style="margin-bottom:8px">入力フィールド：${filled.map(f=>`<span class="ftag ok">✓ ${f.field}</span>`).join('')}${nf.map(f=>`<span class="ftag ng">✕ ${f}</span>`).join('')}</div>`
+        }
         <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
           <div style="font-size:.75rem;color:var(--accent);font-weight:700;margin-bottom:8px">📄 送信内容プレビュー</div>
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:.8rem;line-height:1.8;white-space:pre-wrap;color:var(--text)">${msgContent.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
         </div>
+        ${isManual&&p.url ? `<div style="margin-top:12px"><button class="manual-btn" onclick="openManual('${p.url}','${encodeURIComponent(msgContent)}')">🖐 手動送信（フォームを開く）</button></div>` : ''}
       </div>
     </div>`;
   }
   for (const e of job.errors) {
+    const url = e.url||'';
     h+=`<div class="preview-item"><div class="pitem-h"><div class="pname">${e.company}</div><span class="sbadge error">エラー</span></div>
     <div class="pdetail">
       <div style="color:var(--danger);margin-bottom:12px">${e.error}</div>
-      <div style="border-top:1px solid var(--border);padding-top:12px">
+      <div style="background:var(--surface);border:1px solid rgba(255,79,110,0.2);border-radius:10px;padding:10px;font-size:.78rem;color:var(--muted);margin-bottom:12px">
+        💡 URLが正しいか確認してください。<br>例: https://example.com/contact
+      </div>
+      ${url ? `<button class="manual-btn" onclick="openManual('${url}','${encodeURIComponent(msgContent)}')">🖐 手動送信（フォームを開く）</button>` : ''}
+      <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px">
         <div style="font-size:.75rem;color:var(--accent);font-weight:700;margin-bottom:8px">📄 送信予定内容</div>
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:.8rem;line-height:1.8;white-space:pre-wrap;color:var(--text)">${msgContent.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
       </div>
@@ -712,6 +728,23 @@ function renderPreviews(job) {
 
 // ===== 送信 =====
 function getSenderInfo(){return{name:document.getElementById('sName').value,company:document.getElementById('sCompany').value,email:document.getElementById('sEmail').value,phone:document.getElementById('sPhone').value};}
+
+function openManual(url, encodedMsg) {
+  const msg = decodeURIComponent(encodedMsg);
+  const info = getSenderInfo();
+  // クリップボードにコピーして新しいタブでフォームを開く
+  const copyText = msg;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(copyText).then(()=>{
+      toast('送信内容をコピーしました。フォームを開きます。','success');
+    }).catch(()=>{
+      toast('フォームを開きます。送信内容を手動でコピーしてください。','info');
+    });
+  } else {
+    toast('フォームを開きます。送信内容を手動でコピーしてください。','info');
+  }
+  setTimeout(()=>window.open(url, '_blank'), 800);
+}
 function getMsgForCompany(company) {
   const descId = parseInt(document.getElementById('companyDescSel').value);
   const pid = (company.patternId!=null) ? company.patternId : selPattern;
@@ -739,7 +772,6 @@ function showResults(results) {
   goStep(5);
   const now = new Date();
   const dateStr = now.getFullYear()+'/'+(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getDate().toString().padStart(2,'0');
-  // 送付済みフラグを更新
   results.forEach(r=>{
     if (r.status==='submitted') {
       const c = companies.find(c=>c.id===r.companyId);
@@ -747,10 +779,25 @@ function showResults(results) {
     }
   });
   saveCompanies();
-  document.getElementById('resultList').innerHTML=results.map(r=>`
-    <div class="preview-item"><div class="pitem-h"><div class="pname">${r.companyName}</div>
-    <span class="sbadge ${r.status==='submitted'?'submitted':'error'}">${r.status==='submitted'?'✓ 送信完了':r.status==='no_fields'?'フィールド未検出':'エラー'}</span></div>
-    <div class="pdetail">${r.message||r.error||'正常に送信されました'}</div></div>`).join('');
+  const msgContent = document.getElementById('msgEdit').value;
+  document.getElementById('resultList').innerHTML=results.map(r=>{
+    const isManual = r.status==='manual_required';
+    const isError  = r.status==='error';
+    const isOk     = r.status==='submitted';
+    const badgeClass = isOk?'submitted':isManual?'manual':'error';
+    const badgeText  = isOk?'✓ 送信完了':isManual?'⚠️ 手動送信が必要':'エラー';
+    const url = r.url||'';
+    return `<div class="preview-item">
+      <div class="pitem-h"><div class="pname">${r.companyName}</div>
+      <span class="sbadge ${badgeClass}">${badgeText}</span></div>
+      <div class="pdetail">
+        <div style="margin-bottom:10px">${r.message||r.error||'正常に送信されました'}</div>
+        ${(isManual||isError)&&url
+          ? `<button class="manual-btn" onclick="openManual('${url}','${encodeURIComponent(msgContent)}')">🖐 手動送信（フォームを開く）</button>`
+          : ''}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ===== リセット =====
