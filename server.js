@@ -171,6 +171,34 @@ app.post('/api/submit', async (req, res) => {
   res.json({ results });
 });
 
-app.get('/api/health', (_, res) => res.json({ status: 'ok', version: '3.0' }));
+// ── 業態自動判定API ──────────────────────────
+app.post('/api/detect-pattern', async (req, res) => {
+  const { url } = req.body;
+  const normalized = normalizeUrl(url);
+  if (!normalized) return res.json({ patternId: null });
+  try {
+    const { html } = await fetchPage(normalized);
+    // HTMLのテキストから業態キーワードを判定
+    const text = html.replace(/<[^>]+>/g, ' ').toLowerCase();
+    const title = (html.match(/<title[^>]*>(.*?)<\/title>/i) || [])[1] || '';
+    const meta  = (html.match(/<meta[^>]*description[^>]*content=["']([^"']+)["']/i) || [])[1] || '';
+    const combined = (title + ' ' + meta + ' ' + text + ' ' + normalized).toLowerCase();
+
+    let patternId = null;
+    // 判定優先順位：チェーン本部 > 居酒屋・宴会 > 高単価 > カフェ
+    if (/チェーン|本部|holdings|hd\.jp|group|グループ会社|多店舗|フランチャイズ|franchise/.test(combined)) patternId = 3;
+    else if (/居酒屋|izakaya|焼肉|焼き鳥|串焼|炉端|宴会|飲み放題|食べ放題|個室居酒屋/.test(combined)) patternId = 2;
+    else if (/フレンチ|イタリアン|スパニッシュ|鉄板焼|割烹|懐石|会席|高級|fine.dining|premium|ソムリエ|シェフ/.test(combined)) patternId = 1;
+    else if (/カフェ|cafe|珈琲|コーヒー|coffee|ベーカリー|bakery|パン|スイーツ|ケーキ|パティスリー|ティー|紅茶/.test(combined)) patternId = 0;
+    else if (/ラーメン|そば|うどん|寿司|鮨|天ぷら|とんかつ|牛丼|定食|ファミレス|ファミリーレストラン/.test(combined)) patternId = 2; // 一般飲食は居酒屋寄り
+    else if (/restaurant|レストラン|dining|ダイニング|bistro|ビストロ/.test(combined)) patternId = 1; // レストラン系は高単価寄り
+
+    res.json({ patternId, detected: patternId !== null });
+  } catch(e) {
+    res.json({ patternId: null, error: e.message });
+  }
+});
+
+app.get('/api/health', (_, res) => res.json({ status: 'ok', version: '3.1' }));
 app.get('*', (_, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.listen(PORT, () => console.log('FormBlast v3 on port ' + PORT));
