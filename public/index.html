@@ -108,6 +108,12 @@ select option{background:var(--surface2);color:var(--text)}
 .manual-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:rgba(245,166,35,0.1);border:1.5px solid rgba(245,166,35,0.4);border-radius:10px;color:var(--warning);font-size:.82rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all .2s}
 .manual-btn:hover{background:rgba(245,166,35,0.2)}
 .sbadge.manual{background:rgba(245,166,35,0.15);color:var(--warning)}
+.mode-tabs{display:flex;gap:6px;margin-bottom:20px;background:var(--surface2);border-radius:12px;padding:5px;border:1px solid var(--border)}
+.mode-tab{flex:1;padding:10px 6px;border:none;background:transparent;color:var(--muted);font-family:'Noto Sans JP',sans-serif;font-size:.8rem;font-weight:600;border-radius:8px;cursor:pointer;transition:all .2s}
+.mode-tab.active{background:var(--surface);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,0.2)}
+.mode-form .active{border-color:var(--accent);color:var(--accent)}
+.mode-email .active{border-color:var(--success);color:var(--success)}
+.email-input-wrap{background:rgba(34,211,160,0.05);border:1px solid rgba(34,211,160,0.2);border-radius:10px;padding:10px 12px;margin-top:8px}
 .tpl-sel{margin-top:10px}
 .tpl-sel select{font-size:.78rem;padding:8px 12px;border-radius:10px}
 .tpl-tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:.68rem;font-weight:700;background:rgba(79,124,255,0.12);color:var(--accent);margin-left:6px}
@@ -172,6 +178,13 @@ select option{background:var(--surface2);color:var(--text)}
   <div class="section" id="step3">
     <div class="card">
       <div class="ctitle"><span class="badge">3</span>送信内容テンプレート</div>
+      <div class="mode-tabs">
+        <button class="mode-tab active" id="modeTabForm" onclick="setMode('form')">📋 フォーム送信<br><span style="font-size:.68rem;font-weight:400">企業フォームに自動入力</span></button>
+        <button class="mode-tab" id="modeTabEmail" onclick="setMode('email')">📧 メール直送<br><span style="font-size:.68rem;font-weight:400">確実に届く・返信あり</span></button>
+      </div>
+      <div id="modeNote" style="font-size:.78rem;color:var(--muted);margin-bottom:16px;padding:10px 14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+        📋 <strong>フォーム送信モード</strong>：企業の問い合わせフォームに自動入力して送信します。フォームの構造によっては手動対応が必要な場合があります。
+      </div>
 
       <!-- 送信パターン選択 -->
       <div class="fg">
@@ -233,7 +246,7 @@ select option{background:var(--surface2);color:var(--text)}
     </div>
     <div class="abar">
       <button class="btn btn-s" onclick="goStep(3)">← 戻る</button>
-      <button class="btn btn-ok" onclick="confirmSend()">🚀 送信実行</button>
+      <button class="btn btn-ok" id="sendBtn" onclick="confirmSend()">🚀 フォーム送信実行</button>
     </div>
   </div>
 
@@ -664,6 +677,11 @@ function renderCompanies() {
           ${patterns.map((p,pi)=>`<option value="${pi}" ${c.patternId===pi?'selected':''}>${p.label}</option>`).join('')}
         </select>
       </div>
+      <div class="email-input-wrap" id="email-wrap-${c.id}" style="display:none">
+        <label>📧 送信先メールアドレス（メール直送モード用）</label>
+        <input type="email" value="${c.email||''}" placeholder="info@example.com"
+          oninput="updateCompany('${c.id}','email',this.value)"/>
+      </div>
     </div>`).join('');
   document.getElementById('companyList').innerHTML = html;
   document.getElementById('addBtn').style.display = companies.length>=10?'none':'flex';
@@ -806,6 +824,27 @@ function renderPreviews(job) {
 }
 
 // ===== 送信 =====
+// ===== 送信モード =====
+let sendMode = 'form'; // 'form' or 'email'
+
+function setMode(mode) {
+  sendMode = mode;
+  document.getElementById('modeTabForm').classList.toggle('active', mode === 'form');
+  document.getElementById('modeTabEmail').classList.toggle('active', mode === 'email');
+  // メールアドレス入力欄の表示切替
+  document.querySelectorAll('[id^="email-wrap-"]').forEach(el => {
+    el.style.display = mode === 'email' ? 'block' : 'none';
+  });
+  // 送信ボタンのラベル変更
+  const btn = document.getElementById('sendBtn');
+  if (btn) btn.textContent = mode === 'email' ? '📧 メール送信実行' : '🚀 フォーム送信実行';
+  // 説明文変更
+  document.getElementById('modeNote').innerHTML = mode === 'email'
+    ? '📧 <strong>メール直送モード</strong>：企業のメールアドレスに直接送信します。確実に届き、返信も受け取れます。各企業のメールアドレスを入力してください。'
+    : '📋 <strong>フォーム送信モード</strong>：企業の問い合わせフォームに自動入力して送信します。フォームの構造によっては手動対応が必要な場合があります。';
+  toast(mode === 'email' ? 'メール直送モードに切り替えました' : 'フォーム送信モードに切り替えました', 'info');
+}
+
 function getSenderInfo(){return{name:document.getElementById('sName').value,company:document.getElementById('sCompany').value,email:document.getElementById('sEmail').value,phone:document.getElementById('sPhone').value};}
 
 function openManual(url, encodedMsg) {
@@ -831,23 +870,48 @@ function getMsgForCompany(company) {
 }
 function getTargetCompanies() {
   const checkedIds = [...document.querySelectorAll('.cchk:checked')].map(el => el.dataset.id);
-  return companies.filter(c => c.url && checkedIds.includes(c.id));
+  return companies.filter(c => checkedIds.includes(c.id) && (c.url || c.email));
 }
 
 function confirmSend() {
   const targets = getTargetCompanies();
-  if (!targets.length) return toast('配信対象の企業を選択してください（チェックを入れてください）', 'error');
-  const sentTargets = targets.filter(c => c.sent);
-  let warning = '';
-  if (sentTargets.length) warning = `<br><br><span style="color:var(--warning)">⚠️ 送付済みの企業が${sentTargets.length}社含まれています：${sentTargets.map(c=>c.name).join('、')}</span>`;
-  document.getElementById('mbody').innerHTML=`以下の<strong>${targets.length}社</strong>に送信します。<br><br>${targets.map(c=>`・${c.name||c.url} ${c.sent?'（送付済）':''}`).join('<br>')}${warning}<br><br>⚠️ この操作は取り消せません。`;
+  if (!targets.length) return toast('配信対象の企業を選択してください', 'error');
+
+  if (sendMode === 'email') {
+    const noEmail = targets.filter(c => !c.email);
+    if (noEmail.length) return toast(noEmail.map(c=>c.name||'企業').join('、') + ' のメールアドレスを入力してください', 'error');
+    document.getElementById('mbody').innerHTML=`以下の<strong>${targets.length}社</strong>にメールを送信します。<br><br>${targets.map(c=>`・${c.name||c.url}（${c.email}）`).join('<br>')}<br><br>⚠️ この操作は取り消せません。`;
+  } else {
+    const noUrl = targets.filter(c => !c.url);
+    if (noUrl.length) return toast(noUrl.map(c=>c.name||'企業').join('、') + ' のフォームURLを入力してください', 'error');
+    const sentTargets = targets.filter(c => c.sent);
+    let warning = '';
+    if (sentTargets.length) warning = `<br><br><span style="color:var(--warning)">⚠️ 送付済みが${sentTargets.length}社含まれています</span>`;
+    document.getElementById('mbody').innerHTML=`以下の<strong>${targets.length}社</strong>のフォームに送信します。<br><br>${targets.map(c=>`・${c.name||c.url}`).join('<br>')}${warning}<br><br>⚠️ この操作は取り消せません。`;
+  }
   document.getElementById('modal').classList.add('active');
 }
 function closeModal(){document.getElementById('modal').classList.remove('active');}
 async function doSend() {
   closeModal();
-  showLoader('送信中...','各企業のフォームに送信しています...');
   const targets = getTargetCompanies();
+
+  if (sendMode === 'email') {
+    showLoader('メール送信中...','各企業にメールを送信しています...');
+    try {
+      const withMsg = targets.map(c=>({...c, msgContent: getMsgForCompany(c)}));
+      const r = await fetch(API+'/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companies:withMsg,senderInfo:getSenderInfo(),messageTemplate:{content:document.getElementById('msgEdit').value}})});
+      const d = await r.json();
+      hideLoader();
+      showResults(d.results);
+    } catch {
+      hideLoader();
+      toast('メール送信中にエラーが発生しました','error');
+    }
+    return;
+  }
+
+  showLoader('送信中...','各企業のフォームに送信しています...');
   try {
     const validWithMsg = targets.map(c=>({...c, msgContent: getMsgForCompany(c)}));
     const r=await fetch(API+'/api/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companies:validWithMsg,senderInfo:getSenderInfo(),messageTemplate:{content:document.getElementById('msgEdit').value},selectedCompanyIds:targets.map(c=>c.id)})});
