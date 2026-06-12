@@ -1,1093 +1,249 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>FormBlast — 営業フォーム自動送信</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
-<style>
-:root{--bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a26;--border:rgba(255,255,255,0.07);--accent:#4f7cff;--accent2:#a259ff;--success:#22d3a0;--warning:#f5a623;--danger:#ff4f6e;--text:#e8e8f0;--muted:#6b6b85}
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;min-height:100vh;overflow-x:hidden}
-body::before{content:'';position:fixed;top:-30%;left:-10%;width:60%;height:60%;background:radial-gradient(ellipse,rgba(79,124,255,0.08) 0%,transparent 70%);pointer-events:none;z-index:0}
-header{position:sticky;top:0;z-index:100;backdrop-filter:blur(20px);background:rgba(10,10,15,0.85);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
-.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.3rem;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.sdot{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;margin-right:6px;transition:all .3s}
-.sdot.on{background:var(--success);box-shadow:0 0 6px var(--success)}
-.container{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:24px 16px 60px}
-.steps{display:flex;gap:4px;margin-bottom:28px;background:var(--surface);border-radius:14px;padding:6px;border:1px solid var(--border)}
-.sbtn{flex:1;padding:10px 6px;border:none;background:transparent;color:var(--muted);font-family:'Noto Sans JP',sans-serif;font-size:0.72rem;font-weight:500;border-radius:10px;cursor:pointer;transition:all .25s;white-space:nowrap}
-.sbtn.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:700;box-shadow:0 2px 12px rgba(79,124,255,0.3)}
-.sbtn.done{color:var(--success)}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:16px}
-.card:hover{border-color:rgba(79,124,255,0.2)}
-.ctitle{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:10px}
-.badge{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;font-size:.75rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;flex-shrink:0}
-.fg{margin-bottom:14px}
-label{display:block;font-size:.78rem;color:var(--muted);margin-bottom:6px;font-weight:500}
-input[type=text],input[type=email],input[type=tel],input[type=url],textarea,select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:.92rem;outline:none;transition:border-color .2s;-webkit-appearance:none}
-input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,124,255,0.1)}
-textarea{resize:vertical;min-height:120px;line-height:1.6}
-select option{background:var(--surface2);color:var(--text)}
-.company-list{display:flex;flex-direction:column;gap:12px}
-.ccard{background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:16px}
-.ccard-h{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-.cnum{width:28px;height:28px;border-radius:8px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:.8rem;font-weight:700;color:var(--muted);flex-shrink:0}
-.cname{font-weight:600;font-size:.9rem;flex:1}
-.rbtn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:4px;border-radius:6px;transition:color .2s}
-.rbtn:hover{color:var(--danger)}
-.cfields{display:flex;flex-direction:column;gap:10px}
-.ai-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(79,124,255,0.1);border:1px solid rgba(79,124,255,0.2);border-radius:20px;font-size:.72rem;color:var(--accent);font-weight:600;margin-top:8px}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 24px;border:none;border-radius:12px;font-family:'Noto Sans JP',sans-serif;font-weight:700;font-size:.92rem;cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent}
-.btn-p{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 4px 20px rgba(79,124,255,0.3)}
-.btn-p:hover{transform:translateY(-1px)}
-.btn-s{background:var(--surface2);border:1px solid var(--border);color:var(--text)}
-.btn-s:hover{border-color:var(--accent)}
-.btn-ok{background:linear-gradient(135deg,var(--success),#0ea676);color:#fff;box-shadow:0 4px 20px rgba(34,211,160,0.25)}
-.btn-d{background:linear-gradient(135deg,var(--danger),#c9304c);color:#fff}
-.btn-sm{padding:8px 14px;font-size:.82rem}
-.btn-bl{width:100%}
-.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
-.add-btn{width:100%;padding:14px;background:transparent;border:1.5px dashed rgba(79,124,255,0.3);border-radius:16px;color:var(--accent);font-family:'Noto Sans JP',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px}
-.add-btn:hover{background:rgba(79,124,255,0.05);border-color:var(--accent)}
-.abar{display:flex;gap:10px;margin-top:20px}
-.abar .btn{flex:1}
-.tcard{background:var(--surface2);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;cursor:pointer;transition:all .2s;position:relative;margin-bottom:10px}
-.tcard:hover{border-color:rgba(79,124,255,0.3);transform:translateX(3px)}
-.tcard.sel{border-color:var(--accent);background:rgba(79,124,255,0.06)}
-.tcard.sel::before{content:'✓';position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--accent);font-weight:700}
-.tcard.auto-sel{border-color:var(--success);background:rgba(34,211,160,0.06)}
-.tcard.auto-sel::before{content:'🤖';position:absolute;right:14px;top:50%;transform:translateY(-50%)}
-.ttitle{font-weight:700;font-size:.88rem;margin-bottom:4px}
-.tprev{font-size:.77rem;color:var(--muted);line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.edit-area{margin-top:18px}
-.preview-item{background:var(--surface2);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:16px}
-.pitem-h{padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
-.pname{font-weight:700;font-size:.9rem;flex:1}
-.sbadge{font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:20px}
-.sbadge.ready{background:rgba(34,211,160,0.15);color:var(--success)}
-.sbadge.error{background:rgba(255,79,110,0.15);color:var(--danger)}
-.sbadge.submitted{background:rgba(34,211,160,0.2);color:var(--success)}
-.pdetail{padding:12px 16px;font-size:.8rem;color:var(--muted)}
-.ftag{padding:3px 9px;border-radius:6px;font-size:.72rem;font-weight:600;display:inline-block;margin:2px}
-.ftag.ok{background:rgba(34,211,160,0.12);color:var(--success)}
-.ftag.ng{background:rgba(255,79,110,0.12);color:var(--danger)}
-.loading-overlay{display:none;position:fixed;inset:0;z-index:999;background:rgba(10,10,15,0.85);backdrop-filter:blur(8px);align-items:center;justify-content:center;flex-direction:column;gap:20px}
-.loading-overlay.active{display:flex}
-.spinner{width:48px;height:48px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.ltext{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700}
-.lsub{font-size:.82rem;color:var(--muted);text-align:center;max-width:260px}
-.toast-c{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:1000;display:flex;flex-direction:column;gap:10px;align-items:center;width:90%;max-width:400px}
-.toast{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 18px;font-size:.85rem;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);animation:slideUp .3s ease;width:100%;text-align:center}
-.toast.success{border-color:var(--success);color:var(--success)}
-.toast.error{border-color:var(--danger);color:var(--danger)}
-.toast.info{border-color:var(--accent);color:var(--accent)}
-@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-.modal{display:none;position:fixed;inset:0;z-index:998;background:rgba(10,10,15,0.9);backdrop-filter:blur(10px);align-items:flex-end;justify-content:center;padding:20px}
-.modal.active{display:flex}
-.mbox{background:var(--surface);border:1px solid var(--border);border-radius:24px 24px 0 0;padding:28px 24px;width:100%;max-width:480px;animation:slideUp .3s ease}
-.mtitle{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;margin-bottom:12px}
-.mbody{font-size:.88rem;color:var(--muted);line-height:1.6;margin-bottom:24px}
-.mactions{display:flex;gap:10px}
-.section{display:none}
-.section.active{display:block}
-.result-summary{text-align:center;padding:40px 20px}
-.result-icon{font-size:3.5rem;margin-bottom:16px}
-.result-title{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;margin-bottom:8px}
-.result-sub{color:var(--muted);font-size:.88rem}
-.sent-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:rgba(34,211,160,0.12);border:1px solid rgba(34,211,160,0.25);border-radius:20px;font-size:.7rem;font-weight:700;color:var(--success)}
-.unsent-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:rgba(107,107,133,0.1);border:1px solid var(--border);border-radius:20px;font-size:.7rem;font-weight:700;color:var(--muted)}
-.ccard.sent{border-color:rgba(34,211,160,0.2);background:rgba(34,211,160,0.03)}
-.del-bar{display:flex;align-items:center;gap:10px;padding:10px 0;margin-bottom:8px;border-bottom:1px solid var(--border)}
-.chk{width:18px;height:18px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
-.del-btn-mini{padding:6px 14px;background:rgba(255,79,110,0.1);border:1px solid rgba(255,79,110,0.3);border-radius:8px;color:var(--danger);font-size:.78rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif}
-.del-btn-mini:hover{background:rgba(255,79,110,0.2)}
-.saved-indicator{font-size:.7rem;color:var(--success);display:none;margin-left:8px}
-.saved-indicator.show{display:inline}
-.manual-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:rgba(245,166,35,0.1);border:1.5px solid rgba(245,166,35,0.4);border-radius:10px;color:var(--warning);font-size:.82rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all .2s}
-.manual-btn:hover{background:rgba(245,166,35,0.2)}
-.sbadge.manual{background:rgba(245,166,35,0.15);color:var(--warning)}
-.mode-tabs{display:flex;gap:6px;margin-bottom:20px;background:var(--surface2);border-radius:12px;padding:5px;border:1px solid var(--border)}
-.mode-tab{flex:1;padding:10px 6px;border:none;background:transparent;color:var(--muted);font-family:'Noto Sans JP',sans-serif;font-size:.8rem;font-weight:600;border-radius:8px;cursor:pointer;transition:all .2s}
-.mode-tab.active{background:var(--surface);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,0.2)}
-.mode-form .active{border-color:var(--accent);color:var(--accent)}
-.mode-email .active{border-color:var(--success);color:var(--success)}
-.email-input-wrap{background:rgba(34,211,160,0.05);border:1px solid rgba(34,211,160,0.2);border-radius:10px;padding:10px 12px;margin-top:8px}
-.bml-box{background:var(--surface2);border:1.5px solid rgba(79,124,255,0.3);border-radius:16px;padding:20px;margin-top:16px}
-.bml-title{font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;margin-bottom:8px;color:var(--accent)}
-.bml-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;font-size:.82rem;line-height:1.6}
-.bml-num{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:.72rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
-.bml-code{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:.72rem;font-family:monospace;word-break:break-all;line-height:1.5;color:var(--text);max-height:80px;overflow-y:auto;margin:8px 0}
-.bml-copy-btn{width:100%;padding:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:10px;color:#fff;font-family:'Noto Sans JP',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;margin-top:4px}
-.tpl-sel{margin-top:10px}
-.tpl-sel select{font-size:.78rem;padding:8px 12px;border-radius:10px}
-.tpl-tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:.68rem;font-weight:700;background:rgba(79,124,255,0.12);color:var(--accent);margin-left:6px}
-.save-tpl-btn{padding:6px 14px;background:rgba(79,124,255,0.1);border:1px solid rgba(79,124,255,0.3);border-radius:8px;color:var(--accent);font-size:.78rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;margin-left:8px}
-.save-tpl-btn:hover{background:rgba(79,124,255,0.2)}
-.pattern-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.pattern-chip{padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:var(--surface2);color:var(--muted);transition:all .2s}
-.pattern-chip.sel{border-color:var(--accent);background:rgba(79,124,255,0.1);color:var(--accent)}
-.pattern-chip.auto{border-color:var(--success);background:rgba(34,211,160,0.1);color:var(--success)}
-.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
-@media(min-width:600px){.cfields{display:grid;grid-template-columns:1fr 1fr}.modal{align-items:center}.mbox{border-radius:24px}.container{padding:32px 24px 80px}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>AIO検索表示 診断レポート作成ツール</title>
+  <style>
+    :root{
+      --bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#63708a;--line:#dfe6f2;--brand:#2357ff;--brand2:#00a884;--warn:#f39c12;--bad:#e74c3c;--good:#13a06f;--shadow:0 18px 50px rgba(24,39,75,.12);--radius:22px
+    }
+    *{box-sizing:border-box} body{margin:0;background:linear-gradient(135deg,#eef3ff 0%,#f8fbff 44%,#f5fff9 100%);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;line-height:1.65}
+    button,input,textarea{font:inherit} .wrap{width:min(1180px,calc(100% - 32px));margin:0 auto}.hero{padding:42px 0 24px}.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:24px;align-items:stretch}.hero-card,.panel{background:rgba(255,255,255,.86);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.9);border-radius:var(--radius);box-shadow:var(--shadow)}.hero-card{padding:34px}.eyebrow{display:inline-flex;gap:8px;align-items:center;color:#123dcc;background:#eaf0ff;border:1px solid #d6e1ff;padding:6px 12px;border-radius:999px;font-weight:800;font-size:.82rem}h1{font-size:clamp(2rem,5vw,4.6rem);line-height:1.05;margin:18px 0 16px;letter-spacing:-.06em}.lead{color:var(--muted);font-size:1.05rem;margin:0 0 22px}.feature-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.feature{display:flex;gap:9px;align-items:flex-start;background:#f7f9ff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:.9rem}.panel{padding:22px}.panel h2{margin:0 0 12px;font-size:1.25rem}.form-grid{display:grid;gap:14px}.field label{display:block;font-weight:800;margin:0 0 6px}.field small{display:block;color:var(--muted);margin-top:4px}.input,.textarea{width:100%;border:1px solid #d5deef;background:#fff;border-radius:14px;padding:13px 14px;outline:none;transition:.2s}.input:focus,.textarea:focus{border-color:var(--brand);box-shadow:0 0 0 4px rgba(35,87,255,.11)}.textarea{min-height:94px;resize:vertical}.btn{border:0;border-radius:15px;padding:13px 18px;font-weight:900;cursor:pointer;display:inline-flex;gap:8px;align-items:center;justify-content:center;transition:.2s}.btn:disabled{opacity:.55;cursor:not-allowed}.primary{background:linear-gradient(135deg,var(--brand),#6c3bff);color:#fff;box-shadow:0 12px 26px rgba(35,87,255,.25)}.secondary{background:#eef3ff;color:#173bb8;border:1px solid #d7e1ff}.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}.danger{background:#fff1f0;color:#bd2c20;border:1px solid #ffd4cf}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}.loading{display:none;margin-top:14px;padding:14px;border-radius:16px;background:#f7f9ff;border:1px solid var(--line);color:var(--muted)}.loading.on{display:block}.spinner{width:18px;height:18px;border-radius:50%;border:3px solid #dbe4ff;border-top-color:var(--brand);display:inline-block;animation:spin 1s linear infinite;vertical-align:-4px;margin-right:8px}@keyframes spin{to{transform:rotate(360deg)}}
+    .main{padding:14px 0 54px}.grid{display:grid;grid-template-columns:1fr 340px;gap:22px;align-items:start}.result{display:none}.result.on{display:block}.score-card{display:grid;grid-template-columns:210px 1fr;gap:24px;align-items:center}.score-ring{width:190px;height:190px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--brand) calc(var(--score)*1%),#e8edf8 0);position:relative;margin:auto}.score-ring:before{content:"";position:absolute;width:142px;height:142px;background:#fff;border-radius:50%;box-shadow:inset 0 0 0 1px var(--line)}.score-num{position:relative;text-align:center}.score-num strong{font-size:3.2rem;line-height:1}.score-num span{display:block;color:var(--muted);font-weight:800}.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 10px;font-weight:900;font-size:.78rem}.ok{background:#eafaf3;color:#08784e}.mid{background:#fff8e6;color:#9a6400}.ng{background:#fff0ef;color:#b9342a}.section{margin-top:18px}.section h3{margin:0 0 12px;font-size:1.15rem}.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.mini{background:#fff;border:1px solid var(--line);border-radius:17px;padding:15px}.mini .big{font-size:2rem;font-weight:950;letter-spacing:-.04em}.mini p{margin:.2rem 0 0;color:var(--muted);font-size:.86rem}.checks{display:grid;gap:10px}.check{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;background:#fff;border:1px solid var(--line);border-radius:15px;padding:13px}.check b{display:block}.check small{color:var(--muted)}.list{margin:0;padding-left:1.25rem}.list li{margin:.45rem 0}.keywords{display:flex;gap:8px;flex-wrap:wrap}.kw{background:#f2f6ff;border:1px solid #dfe8ff;color:#1d3b98;border-radius:999px;padding:6px 10px;font-weight:800;font-size:.82rem}.source{border:1px solid var(--line);border-radius:14px;background:#fff;padding:12px;margin-bottom:10px}.source a{color:#1646d8;word-break:break-all}.source small{display:block;color:var(--muted)}.history{position:sticky;top:16px}.history-list{display:grid;gap:9px;max-height:560px;overflow:auto}.history-item{border:1px solid var(--line);background:#fff;border-radius:14px;padding:11px;cursor:pointer}.history-item:hover{border-color:var(--brand)}.history-item b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.history-item small{color:var(--muted)}.empty{color:var(--muted);padding:12px;background:#f8fafc;border:1px dashed #ccd6e6;border-radius:14px}.print-head{display:none}.footer-note{color:var(--muted);font-size:.82rem;margin-top:14px}.error{display:none;margin-top:12px;background:#fff0ef;color:#a12b22;border:1px solid #ffc9c3;border-radius:14px;padding:12px}.error.on{display:block}
+    @media (max-width:900px){.hero-grid,.grid,.score-card{grid-template-columns:1fr}.feature-list,.cards{grid-template-columns:1fr}.hero{padding-top:22px}.hero-card{padding:24px}.history{position:static}.score-ring{width:170px;height:170px}.score-ring:before{width:126px;height:126px}.wrap{width:min(100% - 22px,1180px)}}
+    @media print{body{background:#fff}.hero,.history,.no-print,.footer-note{display:none!important}.wrap{width:100%;margin:0}.main{padding:0}.grid{display:block}.result{display:block}.panel{box-shadow:none;border:0;border-radius:0;padding:0}.print-head{display:block;border-bottom:2px solid #111;margin-bottom:12px;padding-bottom:10px}.section{break-inside:avoid;page-break-inside:avoid}.cards{grid-template-columns:repeat(3,1fr)}@page{size:A4;margin:12mm}.source{break-inside:avoid}.score-ring{-webkit-print-color-adjust:exact;print-color-adjust:exact}.btn{display:none}}
+  </style>
 </head>
 <body>
-<header>
-  <div class="logo">⚡ FormBlast</div>
-  <div style="display:flex;align-items:center;font-size:.78rem;color:var(--muted)">
-    <span class="sdot" id="sdot"></span><span id="stxt">未接続</span>
-  </div>
-</header>
-<div class="container">
-  <div class="steps">
-    <button class="sbtn active" onclick="goStep(1)" id="sb1">① 送信者情報</button>
-    <button class="sbtn" onclick="goStep(2)" id="sb2">② 企業設定</button>
-    <button class="sbtn" onclick="goStep(3)" id="sb3">③ テンプレート</button>
-    <button class="sbtn" onclick="goStep(4)" id="sb4">④ 確認・送信</button>
-  </div>
-
-  <!-- STEP1 -->
-  <div class="section active" id="step1">
-    <div class="card">
-      <div class="ctitle"><span class="badge">1</span>あなたの情報</div>
-      <div style="display:flex;align-items:center;margin-bottom:12px">
-        <span style="font-size:.75rem;color:var(--muted)">入力内容は自動保存されます</span>
-        <span class="saved-indicator" id="senderSaved">✓ 保存しました</span>
-      </div>
-      <div class="fg"><label>お名前 *</label><input type="text" id="sName" placeholder="山田 太郎"/></div>
-      <div class="fg"><label>会社名 *</label><input type="text" id="sCompany" placeholder="株式会社リロクラブ"/></div>
-      <div class="fg"><label>メールアドレス *</label><input type="email" id="sEmail" placeholder="yamada@example.com"/></div>
-      <div class="fg"><label>電話番号</label><input type="tel" id="sPhone" placeholder="03-1234-5678"/></div>
-    </div>
-    <div class="bml-box" id="bmlBox" style="display:none">
-      <div class="bml-title">⚡ フォーム自動入力コード（Chrome対応）</div>
-      <p style="font-size:.8rem;color:var(--muted);margin-bottom:14px">企業フォームを開いた状態でアドレスバーにコードを貼り付けてEnterを押すと、お名前・会社名・メール・電話を自動入力します。</p>
-
-      <div style="background:rgba(79,124,255,0.06);border:1px solid rgba(79,124,255,0.2);border-radius:10px;padding:12px;margin-bottom:14px">
-        <div style="font-size:.78rem;font-weight:700;color:var(--accent);margin-bottom:8px">📱 Chrome（iPad）での使い方</div>
-        <div class="bml-step"><div class="bml-num">1</div><div>「コードをコピー」をタップ</div></div>
-        <div class="bml-step"><div class="bml-num">2</div><div>手動送信ボタンで企業フォームを開く</div></div>
-        <div class="bml-step"><div class="bml-num">3</div><div>Chromeのアドレスバーをタップ → 全選択 → 貼り付け → 実行（Go）</div></div>
-        <div class="bml-step"><div class="bml-num">4</div><div>✅ 自動入力完了！お問い合わせ内容だけコピペ</div></div>
-      </div>
-
-      <div style="background:rgba(162,89,255,0.06);border:1px solid rgba(162,89,255,0.2);border-radius:10px;padding:12px;margin-bottom:14px">
-        <div style="font-size:.78rem;font-weight:700;color:var(--accent2);margin-bottom:8px">🔖 Safari（iPad）でブックマーク登録する場合</div>
-        <div class="bml-step"><div class="bml-num">1</div><div>「コードをコピー」をタップ</div></div>
-        <div class="bml-step"><div class="bml-num">2</div><div>Safariで任意のページを <strong>ブックマーク登録</strong>（名前は「自動入力」など）</div></div>
-        <div class="bml-step"><div class="bml-num">3</div><div>ブックマーク一覧 → 長押し → 編集 → URLを削除してコードを貼り付けて保存</div></div>
-        <div class="bml-step"><div class="bml-num">4</div><div>企業フォームを開いた状態でブックマークをタップ → 自動入力！</div></div>
-      </div>
-
-      <div class="bml-code" id="bmlCode">（送信者情報を入力するとコードが生成されます）</div>
-      <button class="bml-copy-btn" onclick="copyBml()">📋 コードをコピー</button>
-    </div>
-    <div style="margin-top:12px">
-      <button class="btn btn-s btn-sm" onclick="toggleBml()" id="bmlToggleBtn">⚡ フォーム自動入力コードを設定する</button>
-    </div>
-    <div class="abar"><button class="btn btn-p btn-bl" onclick="nextStep(1)">次へ　→</button></div>
-  </div>
-
-  <!-- STEP2 -->
-  <div class="section" id="step2">
-    <div class="card">
-      <div class="ctitle">
-        <span class="badge">2</span>送信先企業（最大10社）
-        <span class="saved-indicator" id="companiesSaved">✓ 保存しました</span>
-      </div>
-      <div class="company-list" id="companyList"></div>
-      <button class="add-btn" id="addBtn" onclick="addCompany()"><span>＋</span> 企業を追加する</button>
-    </div>
-    <div class="abar">
-      <button class="btn btn-s" onclick="goStep(1)">← 戻る</button>
-      <button class="btn btn-p" onclick="nextStep(2)">次へ　→</button>
-    </div>
-  </div>
-
-  <!-- STEP3 -->
-  <div class="section" id="step3">
-    <div class="card">
-      <div class="ctitle"><span class="badge">3</span>送信内容テンプレート</div>
-      <div class="mode-tabs">
-        <button class="mode-tab active" id="modeTabForm" onclick="setMode('form')">📋 フォーム送信<br><span style="font-size:.68rem;font-weight:400">企業フォームに自動入力</span></button>
-        <button class="mode-tab" id="modeTabEmail" onclick="setMode('email')">📧 メール直送<br><span style="font-size:.68rem;font-weight:400">確実に届く・返信あり</span></button>
-      </div>
-      <div id="modeNote" style="font-size:.78rem;color:var(--muted);margin-bottom:16px;padding:10px 14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
-        📋 <strong>フォーム送信モード</strong>：企業の問い合わせフォームに自動入力して送信します。フォームの構造によっては手動対応が必要な場合があります。
-      </div>
-
-      <!-- 送信パターン選択 -->
-      <div class="fg">
-        <label>📋 送信パターン（業態別）</label>
-        <div class="pattern-row" id="patternRow"></div>
-        <div id="aiHint" style="font-size:.75rem;color:var(--success);margin-top:4px;display:none">🤖 企業サイトから業態を自動判定しました</div>
-      </div>
-
-      <hr class="divider">
-
-      <!-- 会社概要選択 -->
-      <div class="fg">
-        <label>🏢 会社概要パターン</label>
-        <select id="companyDescSel" onchange="updatePreview()">
-          <option value="0">⑤ 飲食店向け送客特化版（推奨）</option>
-          <option value="1">① 超シンプル版</option>
-          <option value="2">② 権威性強調版（上場グループ訴求）</option>
-          <option value="3">③ 実績強調版（数字インパクト重視）</option>
-          <option value="4">④ 信頼・安定感重視版</option>
-          <option value="5">⑥ 「なぜ飲食に？」を補足する版</option>
-          <option value="6">⑦ 経営者向け・ビジネス寄り版</option>
-          <option value="7">⑧ 本部・大手企業向け版</option>
-          <option value="8">⑨ 柔らかめ（個人経営向け）</option>
-          <option value="9">⑩ 信頼＋社会性を出す版</option>
-        </select>
-      </div>
-
-      <hr class="divider">
-
-      <!-- 本文プレビュー・編集 -->
-      <div class="edit-area">
-        <div style="display:flex;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:8px">
-          <label style="margin:0">✏️ 送信内容（編集可能）</label>
-          <button class="save-tpl-btn" onclick="saveTemplateEdit()">💾 変更を保存</button>
-          <button class="save-tpl-btn" onclick="resetTemplateEdit()" style="background:rgba(245,166,35,0.1);border-color:rgba(245,166,35,0.3);color:var(--warning)">↩ 元に戻す</button>
-          <span class="saved-indicator" id="tplSaved">✓ 保存しました</span>
+  <header class="hero no-print">
+    <div class="wrap hero-grid">
+      <div class="hero-card">
+        <div class="eyebrow">🤖 AIO / AI検索表示 事前診断</div>
+        <h1>提案前に、AI検索で選ばれる状態かを可視化。</h1>
+        <p class="lead">店舗名・会社名・URLから公式サイトと公開検索結果を調査し、ChatGPT・Gemini・AI Overviewに表示されやすいかを日本語レポート化します。</p>
+        <div class="feature-list">
+          <div class="feature">✅ 100点満点でAIO対策状況を評価</div>
+          <div class="feature">✅ できていること・不足点を自動整理</div>
+          <div class="feature">✅ 表示できていない想定キーワードを提示</div>
+          <div class="feature">✅ 保存履歴・A4 PDF印刷に対応</div>
         </div>
-        <textarea id="msgEdit" style="min-height:260px"></textarea>
+      </div>
+      <div class="panel">
+        <h2>診断対象を入力</h2>
+        <form id="auditForm" class="form-grid">
+          <div class="field">
+            <label for="name">店舗名・会社名</label>
+            <input id="name" class="input" placeholder="例：〇〇カフェ 渋谷店" autocomplete="organization">
+          </div>
+          <div class="field">
+            <label for="url">公式サイトURL</label>
+            <input id="url" class="input" placeholder="例：https://example.jp" inputmode="url" autocomplete="url">
+            <small>URLがあると、構造化データ・FAQ・住所・口コミ導線などを詳しく評価できます。</small>
+          </div>
+          <div class="field">
+            <label for="keywords">追加で確認したいキーワード（任意）</label>
+            <textarea id="keywords" class="textarea" placeholder="例：渋谷 カフェ おすすめ、渋谷 ランチ 予約"></textarea>
+          </div>
+          <div class="actions">
+            <button class="btn primary" id="runBtn" type="submit">診断レポートを作成</button>
+            <button class="btn ghost" type="button" id="sampleBtn">サンプル入力</button>
+          </div>
+          <div class="loading" id="loading"><span class="spinner"></span>公式サイトと公開検索結果を調査しています。通常10〜30秒ほどかかります。</div>
+          <div class="error" id="errorBox"></div>
+        </form>
       </div>
     </div>
-    <div class="abar">
-      <button class="btn btn-s" onclick="goStep(2)">← 戻る</button>
-      <button class="btn btn-p" onclick="nextStep(3)">確認へ　→</button>
-    </div>
-  </div>
+  </header>
 
-  <!-- STEP4 -->
-  <div class="section" id="step4">
-    <div class="card">
-      <div class="ctitle"><span class="badge">4</span>プレビューと送信確認</div>
-      <div id="previewArea"><p style="color:var(--muted);font-size:.85rem;text-align:center;padding:20px 0">「プレビュー取得」で各フォームを解析して入力状況を確認できます。</p></div>
-      <div style="margin-top:16px">
-        <button class="btn btn-s btn-sm" onclick="loadPreview()" id="prevBtn">🔍 プレビュー取得</button>
-      </div>
-    </div>
-    <div class="card" id="summaryCard" style="display:none">
-      <div class="ctitle"><span class="badge" style="background:var(--success)">✓</span>送信概要</div>
-      <div id="summaryBody" style="font-size:.85rem;color:var(--muted);line-height:1.8"></div>
-    </div>
-    <div class="abar">
-      <button class="btn btn-s" onclick="goStep(3)">← 戻る</button>
-      <button class="btn btn-ok" id="sendBtn" onclick="confirmSend()">🚀 フォーム送信実行</button>
-    </div>
-  </div>
+  <main class="main">
+    <div class="wrap grid">
+      <article class="panel result" id="result">
+        <div class="print-head">
+          <h1 style="font-size:24px;margin:0">AIO検索表示 診断レポート</h1>
+          <div id="printMeta"></div>
+        </div>
+        <div class="score-card section">
+          <div class="score-ring" id="scoreRing" style="--score:0"><div class="score-num"><strong id="scoreNum">0</strong><span>/100点</span></div></div>
+          <div>
+            <span class="pill" id="statusPill">診断待ち</span>
+            <h2 id="reportTitle" style="font-size:2rem;line-height:1.2;margin:12px 0 8px">診断結果</h2>
+            <p id="reportLead" style="color:var(--muted);margin:0"></p>
+            <div class="actions no-print">
+              <button class="btn secondary" onclick="window.print()">PDF保存・A4印刷</button>
+              <button class="btn ghost" id="copyBtn">要約をコピー</button>
+              <button class="btn danger" id="deleteBtn">この履歴を削除</button>
+            </div>
+          </div>
+        </div>
 
-  <!-- STEP5 完了 -->
-  <div class="section" id="step5">
-    <div class="card">
-      <div class="result-summary">
-        <div class="result-icon">🎉</div>
-        <div class="result-title">送信完了</div>
-        <div class="result-sub">各企業のフォームへの送信が完了しました</div>
-      </div>
-      <div id="resultList"></div>
-    </div>
-    <div class="abar" style="margin-top:16px">
-      <button class="btn btn-s btn-bl" onclick="resetAll()">🔄 最初からやり直す</button>
-    </div>
-  </div>
-</div>
+        <section class="section">
+          <h3>AIツール別の表示可能性</h3>
+          <div class="cards" id="toolCards"></div>
+        </section>
 
-<div class="loading-overlay" id="loader">
-  <div class="spinner"></div>
-  <div class="ltext" id="ltxt">処理中...</div>
-  <div class="lsub" id="lsub">しばらくお待ちください</div>
-</div>
+        <section class="section">
+          <h3>評価項目：できていること / できていないこと</h3>
+          <div class="checks" id="checks"></div>
+        </section>
 
-<div class="modal" id="modal">
-  <div class="mbox">
-    <div class="mtitle" id="mtitle">⚠️ 送信確認</div>
-    <div class="mbody" id="mbody"></div>
-    <div class="mactions">
-      <button class="btn btn-s" style="flex:1" onclick="closeModal()">キャンセル</button>
-      <button class="btn btn-d" style="flex:1" onclick="doSend()">送信する</button>
+        <section class="section">
+          <h3>表示できていない可能性が高いキーワード</h3>
+          <div class="keywords" id="weakKeywords"></div>
+        </section>
+
+        <section class="section">
+          <h3>AIO対策の提案ポイント</h3>
+          <ol class="list" id="recommendations"></ol>
+        </section>
+
+        <section class="section">
+          <h3>サイト・エンティティ調査結果</h3>
+          <div class="cards" id="facts"></div>
+        </section>
+
+        <section class="section">
+          <h3>検索調査ログ</h3>
+          <div id="sources"></div>
+        </section>
+
+        <p class="footer-note" id="notes"></p>
+      </article>
+
+      <aside class="panel history no-print">
+        <h2>保存履歴</h2>
+        <p style="color:var(--muted);margin-top:0;font-size:.9rem">診断結果はこのブラウザに自動保存されます。過去提案の比較や再印刷に使えます。</p>
+        <div class="history-list" id="historyList"></div>
+      </aside>
     </div>
-  </div>
-</div>
-
-<div class="toast-c" id="toastC"></div>
+  </main>
 
 <script>
-const API = (location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:3001':'';
-let companies=[], selPattern=0, jobId=null;
+const $ = (id) => document.getElementById(id);
+const STORAGE_KEY = 'aio-audit-history-v1';
+let currentReport = null;
 
-// ===== ストレージキー =====
-const KEY_SENDER = 'fb_sender';
-const KEY_COMPANIES = 'fb_companies';
-const KEY_TEMPLATES = 'fb_templates';
+function loadHistory(){
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+}
+function saveHistory(items){ localStorage.setItem(STORAGE_KEY, JSON.stringify(items.slice(0, 50))); renderHistory(); }
+function upsertHistory(report){
+  const items = loadHistory().filter((item) => item.id !== report.id);
+  items.unshift(report);
+  saveHistory(items);
+}
+function formatDate(iso){ return new Date(iso).toLocaleString('ja-JP', { dateStyle:'medium', timeStyle:'short' }); }
+function escapeHtml(value){ return String(value ?? '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function scoreClass(score){ return score >= 75 ? 'ok' : score >= 50 ? 'mid' : 'ng'; }
 
-// ===== テンプレートの保存・読込 =====
-function saveTemplateEdit() {
-  const edited = document.getElementById('msgEdit').value;
-  try {
-    const saved = JSON.parse(localStorage.getItem(KEY_TEMPLATES)||'{}');
-    saved[selPattern] = edited;
-    localStorage.setItem(KEY_TEMPLATES, JSON.stringify(saved));
-    // patternの内容も更新
-    patterns[selPattern]._edited = edited;
-    showSaved('tplSaved');
-  } catch(e){}
+function renderHistory(){
+  const items = loadHistory();
+  $('historyList').innerHTML = items.length ? items.map((item) => `
+    <div class="history-item" data-id="${item.id}">
+      <b>${escapeHtml(item.input?.name || '名称未設定')}</b>
+      <small>${formatDate(item.createdAt)} / ${item.score}点</small>
+    </div>`).join('') : '<div class="empty">まだ保存された診断はありません。</div>';
+  document.querySelectorAll('.history-item').forEach((el) => el.addEventListener('click', () => {
+    const report = loadHistory().find((item) => item.id === el.dataset.id);
+    if (report) renderReport(report);
+  }));
 }
 
-function resetTemplateEdit() {
-  if (!confirm('保存した変更を破棄して元のテンプレートに戻しますか？')) return;
-  const saved = JSON.parse(localStorage.getItem(KEY_TEMPLATES)||'{}');
-  delete saved[selPattern];
-  localStorage.setItem(KEY_TEMPLATES, JSON.stringify(saved));
-  delete patterns[selPattern]._edited;
-  updatePreview();
-  toast('元のテンプレートに戻しました','info');
-}
-
-function loadTemplateEdits() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(KEY_TEMPLATES)||'{}');
-    Object.keys(saved).forEach(k=>{
-      if (patterns[k]) patterns[k]._edited = saved[k];
-    });
-  } catch(e){}
-}
-
-// ===== 送信者情報の保存・読込 =====
-function saveSender() {
-  const data = {
-    name: document.getElementById('sName').value,
-    company: document.getElementById('sCompany').value,
-    email: document.getElementById('sEmail').value,
-    phone: document.getElementById('sPhone').value,
-  };
-  localStorage.setItem(KEY_SENDER, JSON.stringify(data));
-  showSaved('senderSaved');
-  // ブックマークレットを自動更新
-  if (document.getElementById('bmlBox').style.display !== 'none') generateBml();
-}
-
-function loadSender() {
-  try {
-    const d = JSON.parse(localStorage.getItem(KEY_SENDER)||'{}');
-    if (d.name) document.getElementById('sName').value = d.name;
-    if (d.company) document.getElementById('sCompany').value = d.company;
-    if (d.email) document.getElementById('sEmail').value = d.email;
-    if (d.phone) document.getElementById('sPhone').value = d.phone;
-  } catch(e){}
-}
-
-// ===== 企業情報の保存・読込 =====
-function saveCompanies() {
-  localStorage.setItem(KEY_COMPANIES, JSON.stringify(companies));
-}
-
-function loadCompanies() {
-  try {
-    const d = JSON.parse(localStorage.getItem(KEY_COMPANIES)||'[]');
-    if (d.length) { companies = d; renderCompanies(); }
-    else addCompany();
-  } catch(e){ addCompany(); }
-}
-
-function showSaved(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 2000);
-}
-// ===== テンプレートデータ =====
-const patterns = [
-  {
-    id:0, label:'A カフェ向け',
-    title:'【平日集客強化】成果報酬型・新たな予約導線のご提案',
-    body:`突然のご連絡失礼いたします。
-株式会社リロクラブと申します。
-
-カフェ業態様向けに、平日やアイドルタイムの集客強化につながる完全成果報酬型の予約台帳サービスをご提案しております。
-
-本サービスは、
-・初期費用／月額費用なし
-・予約発生時のみ1名あたり100円
-・約2,300万人が利用する福利厚生メディアへ掲載
-・Instagram上への席予約ボタン設置（国内でも限られた企業のみ対応）
-
-企業勤務層の会員様が多いため、平日ランチ利用や打ち合わせ需要の獲得が期待できます。
-
-既存のSNS運用や集客施策に"追加するだけ"で、新たな予約導線を構築いただける仕組みです。
-
-オンラインにて40分ほど、具体的な導入方法をご説明させていただけませんでしょうか。
-直近では〇月〇日（〇）／〇日（〇）で調整可能です。
-何卒よろしくお願い申し上げます。
-
-株式会社リロクラブ`
-  },
-  {
-    id:1, label:'B 高単価レストラン',
-    title:'【客層を広げる新たな予約導線】成果報酬型サービスのご提案',
-    body:`突然のご連絡失礼いたします。
-株式会社リロクラブと申します。
-
-貴社のような高品質な飲食店様向けに、客層を広げる新たな予約導線として完全成果報酬型の予約サービスをご提案しております。
-
-本サービスは、
-・初期費用／月額費用なし
-・予約発生時のみ1名あたり100円
-・約2,300万人の企業会員様への店舗掲載
-・Instagram上への席予約ボタン設置対応
-
-福利厚生会員は企業勤務層が中心のため、落ち着いた客層の新規来店促進が期待できます。
-ブランドイメージを損なうことなく、新規予約チャネルを追加いただける仕組みです。
-
-ぜひオンラインにて40分ほど、詳細をご説明させていただけますと幸いです。
-直近では〇月〇日（〇）／〇日（〇）で調整可能です。
-何卒よろしくお願い申し上げます。
-
-株式会社リロクラブ`
-  },
-  {
-    id:2, label:'C 居酒屋チェーン',
-    title:'【宴会・団体予約強化】成果報酬型予約導線のご提案',
-    body:`突然のご連絡失礼いたします。
-株式会社リロクラブと申します。
-
-宴会・団体利用の集客強化をご支援できる完全成果報酬型の予約台帳サービスをご提案しております。
-
-本サービスは、
-・初期費用／月額費用なし
-・予約発生時のみ1名あたり100円
-・全国約2,300万人が利用する福利厚生メディアへ掲載
-・Instagram席予約ボタン設置（国内でも限られた企業のみ対応）
-
-企業会員様の利用が多いため、宴会・会食・懇親会需要の獲得にもつながります。
-既存の集客施策に追加する形で、リスクなく予約導線を拡張いただけます。
-
-オンラインにて40分ほど、具体的な送客事例をご紹介させていただけませんでしょうか。
-直近では〇月〇日（〇）／〇日（〇）で調整可能です。
-何卒よろしくお願い申し上げます。
-
-株式会社リロクラブ`
-  },
-  {
-    id:3, label:'D チェーン本部',
-    title:'【複数店舗対応可】成果報酬型・予約導線強化のご提案',
-    body:`突然のご連絡失礼いたします。
-株式会社リロクラブと申します。
-
-複数店舗を展開されている企業様向けに、全店で活用可能な「完全成果報酬型」予約台帳サービスをご提案しております。
-
-本サービスは、
-・初期費用／月額費用なし
-・予約発生時のみ1名あたり100円
-・約2,300万人が利用する福利厚生メディアへの一括掲載
-・Instagram席予約ボタンの設置対応（国内でも限られた企業のみ）
-
-各店舗の予約導線を強化しながら、本部様での一元管理も可能です。
-既存施策に追加する形で導入いただけるため、リスクを抑えて全店展開をご検討いただけます。
-
-オンラインにて40分ほど、具体的な導入フローをご説明させていただけませんでしょうか。
-直近では〇月〇日（〇）／〇日（〇）で調整可能です。
-
-なお、本件のご担当者様が別にいらっしゃいましたら、お手数ですがご共有（ご転送）いただけますと幸いです。
-何卒よろしくお願い申し上げます。
-
-株式会社リロクラブ`
-  }
-];
-
-const companyDescs = [
-  '弊社は、全国12,500社・約2,300万人の企業会員基盤を活用し、飲食店様への送客支援を行っている福利厚生サービス運営会社です。',
-  '弊社は、企業向け福利厚生サービスを提供しており、全国12,500社・約2,300万人の会員様にご利用いただいております。',
-  '弊社は、東証プライム上場リログループの一員として、企業向け福利厚生サービスを提供しており、全国12,500社・約2,300万人の会員基盤を有しております。',
-  '弊社は、全国12,500社・約2,300万人が利用する国内最大級の企業向け福利厚生サービスを運営しております。',
-  '弊社は、企業の人材戦略・福利厚生支援を専門とし、長年にわたり多くの大手企業様にご導入いただいている福利厚生サービス運営会社です。',
-  '弊社は企業向け福利厚生サービスを運営しており、会員様の利用促進の一環として飲食店様への送客支援も行っております。',
-  '弊社は、企業向け福利厚生ソリューションを提供し、約2,300万人の会員ネットワークを活用したマーケティング支援を行っております。',
-  '弊社は、全国規模で企業向け福利厚生サービスを展開し、12,500社・約2,300万人の会員データベースを活用した集客支援を行っております。',
-  '弊社は、企業で働く方々向けの福利厚生サービスを運営しており、多くの会員様に日常利用いただいております。',
-  '弊社は、企業と従業員の満足度向上を目的とした福利厚生サービスを全国規模で展開しております。',
-];
-
-// 業態キーワード判定
-function detectPattern(url, siteName) {
-  const t = (url + ' ' + siteName).toLowerCase();
-  if (/チェーン|本部|holdings|hd|グループ|多店舗|franchise/.test(t)) return 3;
-  if (/居酒屋|izakaya|宴会|banquet|焼肉|焼き鳥|串/.test(t)) return 2;
-  if (/フレンチ|イタリアン|鉄板|割烹|懐石|高級|premium|fine/.test(t)) return 1;
-  if (/カフェ|cafe|コーヒー|coffee|ベーカリー|bakery|スイーツ/.test(t)) return 0;
-  return null;
-}
-
-// サイトのHTMLを取得して業態を詳細判定
-async function autoDetectPattern(company) {
-  if (!company.url || company.patternId != null) return;
-  try {
-    const res = await fetch(API + '/api/detect-pattern', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: company.url })
-    });
-    const data = await res.json();
-    if (data.patternId != null) {
-      company.patternId = data.patternId;
-      company.patternAuto = true;
-      saveCompanies();
-      // UIを更新
-      const tag = document.getElementById('tpl-tag-' + company.id);
-      const sel = document.getElementById('tpl-sel-' + company.id);
-      if (tag) tag.textContent = '🤖 ' + patterns[data.patternId].label;
-      if (sel) sel.value = String(data.patternId);
-      toast(company.name + ': ' + patterns[data.patternId].label + ' を自動選択', 'info');
-    }
-  } catch(e) {}
-}
-
-function buildMessage(patternId, descId, ignoreEdited) {
-  const p = patterns[patternId];
-  // 編集済みテンプレートがあればそれを使用
-  if (!ignoreEdited && p._edited) return p._edited;
-  const desc = companyDescs[descId];
-  const bodyWithDesc = p.body.replace(
-    '株式会社リロクラブと申します。',
-    '株式会社リロクラブと申します。\n\n' + desc
-  );
-  return p.title + '\n\n' + bodyWithDesc;
-}
-
-function updatePreview() {
-  const descId = parseInt(document.getElementById('companyDescSel').value);
-  document.getElementById('msgEdit').value = buildMessage(selPattern, descId);
-}
-
-function renderPatterns(autoId) {
-  const row = document.getElementById('patternRow');
-  row.innerHTML = patterns.map((p,i) => {
-    const isAuto = i === autoId;
-    const isSel = i === selPattern;
-    return `<span class="pattern-chip ${isSel?'sel':''} ${isAuto&&!isSel?'auto':''}" onclick="selectPattern(${i})">${p.label}${isAuto?' 🤖':''}</span>`;
-  }).join('');
-  const hint = document.getElementById('aiHint');
-  hint.style.display = autoId !== null ? 'block' : 'none';
-}
-
-function selectPattern(id) {
-  selPattern = id;
-  renderPatterns(null);
-  updatePreview();
-}
-
-// ===== 初期化 =====
-function init() {
-  selPattern = 0;
-  renderPatterns(null);
-  updatePreview();
-  loadTemplateEdits();
-  loadSender();
-  loadCompanies();
-  // 送信者情報の自動保存（入力のたびに）
-  ['sName','sCompany','sEmail','sPhone'].forEach(id=>{
-    document.getElementById(id).addEventListener('input', saveSender);
-  });
-  checkServer();
-  setInterval(checkServer, 10000);
-}
-
-async function checkServer() {
-  try {
-    const r = await fetch(API+'/api/health', {signal:AbortSignal.timeout(3000)});
-    if (r.ok) { document.getElementById('sdot').className='sdot on'; document.getElementById('stxt').textContent='サーバー接続済み'; }
-  } catch { document.getElementById('sdot').className='sdot'; document.getElementById('stxt').textContent='未接続'; }
-}
-
-// ===== ステップ管理 =====
-function goStep(n) {
-  document.querySelectorAll('.section').forEach((s,i)=>s.classList.toggle('active',i+1===n));
-  document.querySelectorAll('.sbtn').forEach((b,i)=>{
-    b.classList.remove('active','done');
-    if(i+1===n) b.classList.add('active');
-    else if(i+1<n) b.classList.add('done');
-  });
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-
-function nextStep(n) {
-  if (n===1) {
-    if (!document.getElementById('sName').value.trim()||!document.getElementById('sEmail').value.trim()||!document.getElementById('sCompany').value.trim()) {
-      return toast('お名前・会社名・メールアドレスを入力してください','error');
-    }
-  }
-  if (n===2) {
-    const valid = companies.filter(c=>c.url);
-    if (!valid.length) return toast('企業URLを少なくとも1件入力してください','error');
-
-    // URLベース簡易判定（既に自動判定済みの企業を優先）
-    let autoId = null;
-    for (const c of valid) {
-      if (c.patternId != null) { autoId = c.patternId; break; }
-      const id = detectPattern(c.url, c.name);
-      if (id !== null) { autoId = id; break; }
-    }
-    if (autoId !== null) selPattern = autoId;
-    renderPatterns(autoId);
-    updatePreview();
-  }
-  if (n===3) {
-    buildSummary();
-  }
-  goStep(n+1);
-}
-
-// ===== 企業管理 =====
-function addCompany() {
-  if (companies.length>=10) return toast('最大10社まで登録できます','info');
-  companies.unshift({id:'c'+Date.now(), name:'', url:'', sent:false, sentAt:''});
-  renderCompanies();
-  saveCompanies();
-}
-function removeCompany(id) {
-  companies=companies.filter(c=>c.id!==id);
-  renderCompanies();
-  saveCompanies();
-}
-
-function deleteChecked() {
-  const checked = [...document.querySelectorAll('.cchk:checked')].map(el=>el.dataset.id);
-  if (!checked.length) return toast('削除する企業を選択してください','info');
-  if (!confirm(checked.length+'社を削除しますか？')) return;
-  companies = companies.filter(c=>!checked.includes(c.id));
-  renderCompanies();
-  saveCompanies();
-  toast(checked.length+'社を削除しました','success');
-}
-function updateCompany(id,f,v) {
-  const c=companies.find(c=>c.id===id);
-  if(c) { c[f]=v; saveCompanies(); showSaved('companiesSaved'); }
-}
-function renderCompanies() {
-  const hasAny = companies.length > 0;
-  let html = '';
-  if (hasAny) {
-    html += `<div class="del-bar">
-      <input type="checkbox" class="chk" id="chkAll" onchange="toggleAllChk(this.checked)" title="全選択">
-      <label for="chkAll" style="font-size:.78rem;color:var(--muted);cursor:pointer">全選択</label>
-      <button class="del-btn-mini" onclick="deleteChecked()">🗑 選択削除</button>
-      <span style="font-size:.72rem;color:var(--muted);margin-left:auto">${companies.length}/10社</span>
-    </div>`;
-  }
-  html += companies.map((c,i)=>`
-    <div class="ccard ${c.sent?'sent':''}" id="cc_${c.id}">
-      <div class="ccard-h">
-        <input type="checkbox" class="chk cchk" data-id="${c.id}" ${c.sent?'':'checked'} title="${c.sent?'送付済みのため除外':'配信対象'}">
-        <div class="cnum">${i+1}</div>
-        <div class="cname" id="cn_${c.id}">${c.name||'企業 '+(i+1)}</div>
-        ${c.sent
-          ? `<span class="sent-badge">✓ 送付済 ${c.sentAt?'<span style="font-weight:400;font-size:.65rem">'+c.sentAt+'</span>':''}</span>`
-          : `<span class="unsent-badge">未送付</span>`}
-        <button class="rbtn" onclick="removeCompany('${c.id}')">✕</button>
-      </div>
-      ${c.sent ? `<div style="font-size:.72rem;color:var(--muted);padding:0 4px 8px;display:flex;align-items:center;gap:6px">
-        <span>⚠️ 送付済のため配信対象外。再送する場合はチェックを入れてください。</span>
-        <button onclick="resetSent('${c.id}')" style="font-size:.68rem;padding:2px 8px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);cursor:pointer">送付済解除</button>
-      </div>` : ''}
-      <div class="cfields">
-        <div class="fg"><label>会社名</label>
-          <input type="text" value="${c.name}" placeholder="株式会社○○"
-            oninput="updateCompany('${c.id}','name',this.value);document.getElementById('cn_${c.id}').textContent=this.value||'企業 ${i+1}'"/>
-        </div>
-        <div class="fg"><label>問い合わせフォームURL *</label>
-          <input type="url" value="${c.url}" placeholder="https://example.com/contact"
-            oninput="updateCompany('${c.id}','url',this.value)"/>
-        </div>
-      </div>
-      <div class="tpl-sel">
-        <label>使用テンプレート <span class="tpl-tag" id="tpl-tag-${c.id}">${c.patternId!=null?patterns[c.patternId].label:'🤖 自動判定中...'}</span></label>
-        <select id="tpl-sel-${c.id}" onchange="updateCompany('${c.id}','patternId',this.value===''?null:parseInt(this.value));document.getElementById('tpl-tag-${c.id}').textContent=this.value===''?'🤖 自動判定中...':patterns[parseInt(this.value)].label">
-          <option value="" ${c.patternId==null?'selected':''}>🤖 自動判定（サイトから業態を判断）</option>
-          ${patterns.map((p,pi)=>`<option value="${pi}" ${c.patternId===pi?'selected':''}>${p.label}</option>`).join('')}
-        </select>
-      </div>
-      <div class="email-input-wrap" id="email-wrap-${c.id}" style="display:none">
-        <label>📧 送信先メールアドレス（メール直送モード用）</label>
-        <input type="email" value="${c.email||''}" placeholder="info@example.com"
-          oninput="updateCompany('${c.id}','email',this.value)"/>
-      </div>
-    </div>`).join('');
-  document.getElementById('companyList').innerHTML = html;
-  document.getElementById('addBtn').style.display = companies.length>=10?'none':'flex';
-
-  // URL入力済みで自動判定モードの企業はサイト解析してテンプレート自動設定
-  companies.forEach(c => {
-    if (c.url && c.patternId == null) autoDetectPattern(c);
-  });
-}
-
-function toggleAllChk(checked) {
-  document.querySelectorAll('.cchk').forEach(el => el.checked = checked);
-}
-
-function resetSent(id) {
-  const c = companies.find(c => c.id === id);
-  if (c) { c.sent = false; c.sentAt = ''; renderCompanies(); saveCompanies(); toast('送付済みを解除しました', 'info'); }
-}
-
-// ===== 送信概要 =====
-function buildSummary() {
-  const checkedIds = [...document.querySelectorAll('.cchk:checked')].map(el => el.dataset.id);
-  const targets = companies.filter(c => c.url && checkedIds.includes(c.id));
-  const skipped = companies.filter(c => c.url && !checkedIds.includes(c.id));
-  document.getElementById('summaryCard').style.display='block';
-  document.getElementById('summaryBody').innerHTML =
-    `<strong style="color:var(--text)">送信者：</strong>${document.getElementById('sName').value}（${document.getElementById('sCompany').value}）<br>
-     <strong style="color:var(--text)">配信対象：</strong>${targets.map(c=>`${c.name||c.url}（${c.patternId!=null?patterns[c.patternId].label:'自動'}）`).join('、') || 'なし'}<br>
-     <strong style="color:var(--text)">対象社数：</strong>${targets.length}社
-     ${skipped.length ? `<br><span style="color:var(--muted)">除外（未チェック/送付済）：${skipped.map(c=>c.name||c.url).join('、')}</span>` : ''}`;
-}
-
-// ===== プレビュー =====
-async function loadPreview() {
-  // チェック済み・未送付・URL入力済みの企業のみ対象
-  const checkedIds = [...document.querySelectorAll('.cchk:checked')].map(el => el.dataset.id);
-  const valid = companies.filter(c => c.url && checkedIds.includes(c.id) && !c.sent);
-
-  if (!valid.length) return toast('プレビュー対象の企業がありません。未送付かつチェック済みの企業を選択してください。','error');
-
-  // デバッグ：対象企業をコンソールに出力
-  console.log('プレビュー対象:', valid.map(c => c.name + '(' + c.id + ')'));
-
-  showLoader('フォームを解析中...','各企業サイトを開いています...');
-  document.getElementById('prevBtn').disabled = true;
-
-  try {
-    // 各企業に使用するメッセージとIDを明示的にセット
-    const companiesWithMsg = valid.map(c => ({
-      id:         c.id,
-      name:       c.name || c.url,
-      url:        c.url,
-      patternId:  c.patternId,
-      msgContent: getMsgForCompany(c),
-    }));
-
-    const r = await fetch(API + '/api/preview', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        companies:       companiesWithMsg,
-        senderInfo:      getSenderInfo(),
-        messageTemplate: { content: document.getElementById('msgEdit').value },
-      }),
-    });
-    const d = await r.json();
-    jobId = d.jobId;
-    pollJob(d.jobId);
-  } catch {
-    hideLoader();
-    toast('サーバーに接続できません','error');
-    document.getElementById('prevBtn').disabled = false;
-  }
-}
-async function pollJob(id) {
-  const r = await fetch(API+'/api/job/'+id);
-  const j = await r.json();
-  if (j.status!=='done'&&j.status!=='error') { setTimeout(()=>pollJob(id),2000); return; }
-  hideLoader();
-  document.getElementById('prevBtn').disabled=false;
-  renderPreviews(j);
-}
-function renderPreviews(job) {
-  const msgContent = document.getElementById('msgEdit').value;
-  const escaped = msgContent.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  let h='';
-
-  for (const p of job.previews) {
-    const filled = p.fillResults?.filled || [];
-    const nf     = p.fillResults?.notFound || [];
-    const isFullManual = p.needsManual; // 全部手動
-    const hasUnfilled  = nf.length > 0; // 一部未入力
-    const showManualBtn = isFullManual || hasUnfilled;
-
-    let badgeClass = 'ready';
-    let badgeText  = '✅ 自動入力OK';
-    if (isFullManual)       { badgeClass='manual'; badgeText='⚠️ 手動送信が必要'; }
-    else if (hasUnfilled)   { badgeClass='manual'; badgeText='⚠️ 一部手動が必要'; }
-
-    h += `<div class="preview-item">
-      <div class="pitem-h">
-        <div class="pname">${p.companyName||p.url}</div>
-        <span class="sbadge ${badgeClass}">${badgeText}</span>
-      </div>
-      <div class="pdetail">
-        <div style="margin-bottom:10px">
-          ${filled.map(f=>`<span class="ftag ok">✓ ${f.field}</span>`).join('')}
-          ${nf.map(f=>`<span class="ftag ng">✕ ${f}（未検出）</span>`).join('')}
-        </div>
-        ${isFullManual ? `<div style="color:var(--warning);font-size:.82rem;margin-bottom:10px">⚠️ フォームフィールドを自動検出できませんでした。手動で送信してください。</div>` : ''}
-        ${hasUnfilled && !isFullManual ? `<div style="color:var(--warning);font-size:.82rem;margin-bottom:10px">⚠️ 上記 ✕ の項目は自動入力できません。手動送信ボタンでフォームを開き、その項目だけ手動で入力してください。</div>` : ''}
-        ${showManualBtn ? `<button class="manual-btn" onclick="openManual('${p.url}','${encodeURIComponent(msgContent)}')">🖐 手動送信（フォームを開く＋内容コピー）</button>` : ''}
-        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
-          <div style="font-size:.75rem;color:var(--accent);font-weight:700;margin-bottom:8px">📄 送信内容（この内容で送信されます）</div>
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:.8rem;line-height:1.8;white-space:pre-wrap;color:var(--text)">${escaped}</div>
-        </div>
-      </div>
-    </div>`;
-  }
-
-  for (const e of job.errors) {
-    const url = e.url || '';
-    h += `<div class="preview-item">
-      <div class="pitem-h"><div class="pname">${e.company}</div><span class="sbadge error">❌ エラー</span></div>
-      <div class="pdetail">
-        <div style="color:var(--danger);margin-bottom:10px">${e.error}</div>
-        <div style="background:var(--surface);border:1px solid rgba(255,79,110,0.15);border-radius:10px;padding:10px;font-size:.78rem;color:var(--muted);margin-bottom:12px">
-          💡 URLが正しいか確認してください（例: https://example.com/contact）
-        </div>
-        ${url ? `<button class="manual-btn" onclick="openManual('${url}','${encodeURIComponent(msgContent)}')">🖐 手動送信（フォームを開く＋内容コピー）</button>` : ''}
-        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
-          <div style="font-size:.75rem;color:var(--accent);font-weight:700;margin-bottom:8px">📄 送信予定内容</div>
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:.8rem;line-height:1.8;white-space:pre-wrap;color:var(--text)">${escaped}</div>
-        </div>
-      </div>
-    </div>`;
-  }
-
-  document.getElementById('previewArea').innerHTML = h || '<p style="color:var(--muted);text-align:center;padding:20px">結果がありません</p>';
-}
-
-// ===== 送信 =====
-// ===== ブックマークレット =====
-function generateBml() {
-  const info = getSenderInfo();
-  if (!info.name && !info.email) return;
-  const code = generateBmlCode(info);
-  document.getElementById('bmlCode').textContent = code;
-}
-
-function toggleBml() {
-  const box = document.getElementById('bmlBox');
-  const btn = document.getElementById('bmlToggleBtn');
-  const isShown = box.style.display !== 'none';
-  box.style.display = isShown ? 'none' : 'block';
-  btn.textContent = isShown ? '🔖 自動入力ブックマークレットを設定する' : '▲ 閉じる';
-  if (!isShown) generateBml();
-}
-
-function copyBml() {
-  const code = document.getElementById('bmlCode').textContent;
-  if (code.includes('送信者情報を入力')) return toast('先に送信者情報を入力してください','error');
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(code).then(() => toast('コードをコピーしました！Safariのブックマーク編集画面に貼り付けてください','success'));
-  }
-}
-
-// ===== 送信モード =====
-let sendMode = 'form'; // 'form' or 'email'
-
-function setMode(mode) {
-  sendMode = mode;
-  document.getElementById('modeTabForm').classList.toggle('active', mode === 'form');
-  document.getElementById('modeTabEmail').classList.toggle('active', mode === 'email');
-  // メールアドレス入力欄の表示切替
-  document.querySelectorAll('[id^="email-wrap-"]').forEach(el => {
-    el.style.display = mode === 'email' ? 'block' : 'none';
-  });
-  // 送信ボタンのラベル変更
-  const btn = document.getElementById('sendBtn');
-  if (btn) btn.textContent = mode === 'email' ? '📧 メール送信実行' : '🚀 フォーム送信実行';
-  // 説明文変更
-  document.getElementById('modeNote').innerHTML = mode === 'email'
-    ? '📧 <strong>メール直送モード</strong>：企業のメールアドレスに直接送信します。確実に届き、返信も受け取れます。各企業のメールアドレスを入力してください。'
-    : '📋 <strong>フォーム送信モード</strong>：企業の問い合わせフォームに自動入力して送信します。フォームの構造によっては手動対応が必要な場合があります。';
-  toast(mode === 'email' ? 'メール直送モードに切り替えました' : 'フォーム送信モードに切り替えました', 'info');
-}
-
-function getSenderInfo(){return{name:document.getElementById('sName').value,company:document.getElementById('sCompany').value,email:document.getElementById('sEmail').value,phone:document.getElementById('sPhone').value};}
-
-function openManual(url, encodedMsg) {
-  const msg = decodeURIComponent(encodedMsg);
-  const info = getSenderInfo();
-
-  // 自動入力コードを生成してクリップボードにコピー
-  const bmlCode = generateBmlCode(info);
-
-  const fields = [
-    { label: 'お名前',           value: info.name },
-    { label: '会社名',           value: info.company },
-    { label: 'メールアドレス',   value: info.email },
-    { label: '電話番号',         value: info.phone },
-    { label: 'お問い合わせ内容', value: msg },
-  ].filter(f => f.value);
-
-  const rows = fields.map(f => `
-    <div style="margin-bottom:10px;background:var(--surface2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)">
-      <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px;font-weight:600">${f.label}</div>
-      <div style="font-size:.82rem;white-space:pre-wrap;word-break:break-all;line-height:1.6;max-height:80px;overflow-y:auto">${f.value.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
-      <button onclick="copyText(this,'${encodeURIComponent(f.value)}')" style="margin-top:6px;padding:3px 10px;background:rgba(79,124,255,0.1);border:1px solid rgba(79,124,255,0.3);border-radius:6px;color:var(--accent);font-size:.7rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif">📋 コピー</button>
+function renderReport(report){
+  currentReport = report;
+  $('result').classList.add('on');
+  $('scoreRing').style.setProperty('--score', report.score);
+  $('scoreNum').textContent = report.score;
+  $('statusPill').className = `pill ${scoreClass(report.score)}`;
+  $('statusPill').textContent = report.status;
+  $('reportTitle').textContent = `${report.input.name} のAIO診断結果`;
+  $('reportLead').textContent = `診断日時：${formatDate(report.createdAt)} / 公式サイト：${report.fetch?.finalUrl || report.input.url || '未入力'}`;
+  $('printMeta').textContent = `${report.input.name} / ${formatDate(report.createdAt)} / ${report.score}点`;
+
+  const toolLabels = { chatgpt:'ChatGPT', gemini:'Gemini', aio:'AI Overview' };
+  $('toolCards').innerHTML = Object.entries(report.tools).map(([key, tool]) => `
+    <div class="mini">
+      <span class="pill ${scoreClass(tool.score)}">${escapeHtml(tool.status)}</span>
+      <div class="big">${tool.score}<small style="font-size:.9rem">点</small></div>
+      <b>${toolLabels[key]}</b>
+      <p>${escapeHtml(tool.reason)}</p>
     </div>`).join('');
 
-  document.getElementById('mtitle').textContent = '🖐 手動送信ガイド';
-  document.getElementById('mbody').innerHTML = `
-    <div style="background:rgba(79,124,255,0.08);border:1px solid rgba(79,124,255,0.2);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:.8rem">
-      <strong style="color:var(--accent)">⚡ Chrome自動入力の手順：</strong><br>
-      1. 「フォームを開く＋コードをコピー」をタップ<br>
-      2. フォームが開いたらアドレスバーをタップ<br>
-      3. 全選択して貼り付け → 実行（Go）<br>
-      4. お名前・会社・メール・電話が自動入力される
-    </div>
-    <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px">または各項目を個別にコピーして貼り付け：</div>
-    ${rows}`;
+  $('checks').innerHTML = report.checks.map((check) => `
+    <div class="check">
+      <div>${check.ok ? '✅' : '⚠️'}</div>
+      <div><b>${escapeHtml(check.label)}</b><small>${escapeHtml(check.detail)}</small></div>
+      <span class="pill ${check.ok ? 'ok' : 'mid'}">${check.ok ? 'できている' : '不足'}</span>
+    </div>`).join('');
 
-  document.querySelector('.mactions').innerHTML = `
-    <button class="btn btn-s" style="flex:0 0 auto;padding:12px 16px" onclick="closeModal()">閉じる</button>
-    <button class="btn btn-p" style="flex:1" onclick="openFormWithCode('${url}','${encodeURIComponent(bmlCode)}')">⚡ フォームを開く＋コードをコピー</button>`;
+  $('weakKeywords').innerHTML = report.weakKeywords.map((kw) => `<span class="kw">${escapeHtml(kw)}</span>`).join('');
+  $('recommendations').innerHTML = report.recommendations.map((item) => `<li>${escapeHtml(item)}</li>`).join('');
 
-  document.getElementById('modal').classList.add('active');
+  const facts = report.facts || {};
+  const factItems = [
+    ['title/description', facts.title && facts.description ? '確認済み' : '不足', facts.title || facts.description || '取得できませんでした'],
+    ['構造化データ', `${facts.jsonLdCount || 0}件`, (facts.schemaTypes || []).join(', ') || '未検出'],
+    ['住所・電話', facts.address || facts.phone ? '確認済み' : '不足', [facts.address, facts.phone].filter(Boolean).join(' / ') || '未検出'],
+    ['FAQ・口コミ', `${facts.hasFaq ? 'FAQあり' : 'FAQ不足'} / ${facts.hasReview ? '口コミあり' : '口コミ不足'}`, 'AI回答の根拠として重要です'],
+    ['外部導線', `${(facts.sameAsSignals || []).length}件`, (facts.sameAsSignals || []).slice(0, 2).map((x) => x.text || x.href).join(' / ') || 'SNS・GBP・ポータル導線が少ない可能性'],
+    ['想定キーワード', `${(report.keywords || []).length}件`, (report.keywords || []).slice(0, 4).join(' / ')],
+  ];
+  $('facts').innerHTML = factItems.map(([label, value, detail]) => `<div class="mini"><b>${escapeHtml(label)}</b><div class="big" style="font-size:1.3rem">${escapeHtml(value)}</div><p>${escapeHtml(detail)}</p></div>`).join('');
+
+  $('sources').innerHTML = (report.searchResults || []).map((group) => `
+    <div class="source">
+      <b>検索ワード：${escapeHtml(group.query)}</b>
+      ${group.error ? `<small>取得エラー：${escapeHtml(group.error)}</small>` : ''}
+      ${(group.results || []).slice(0,3).map((r) => `<p style="margin:.5rem 0"><a href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.title || r.url)}</a><small>${escapeHtml(r.snippet || r.url)}</small></p>`).join('') || '<small>検索結果を十分に取得できませんでした。</small>'}
+    </div>`).join('');
+
+  $('notes').textContent = (report.notes || []).join(' ');
+  window.scrollTo({ top: $('result').offsetTop - 12, behavior: 'smooth' });
 }
 
-function generateBmlCode(info) {
-  return `javascript:(function(){var fields=[{sel:'input[type=text][name*="name" i],input[name*="氏名"],input[name*="名前"],input[placeholder*="名前"],input[placeholder*="氏名"],input[id*="name" i]',val:${JSON.stringify(info.name||'')}},{sel:'input[name*="company" i],input[name*="会社"],input[placeholder*="会社"],input[id*="company" i]',val:${JSON.stringify(info.company||'')}},{sel:'input[type=email],input[name*="email" i],input[name*="mail" i],input[placeholder*="メール"],input[id*="email" i]',val:${JSON.stringify(info.email||'')}},{sel:'input[type=tel],input[name*="tel" i],input[name*="phone" i],input[placeholder*="電話"],input[id*="tel" i]',val:${JSON.stringify(info.phone||'')}}];var n=0;fields.forEach(function(f){if(!f.val)return;var els=document.querySelectorAll(f.sel);for(var i=0;i<els.length;i++){var el=els[i];if(el.offsetParent!==null&&!el.readOnly&&!el.disabled){try{var d=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value');if(d&&d.set){d.set.call(el,f.val);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}else{el.value=f.val;}}catch(e){el.value=f.val;}n++;break;}}});alert('✅ '+n+'項目を自動入力しました！');})();`;
-}
-
-function openFormWithCode(url, encodedCode) {
-  const code = decodeURIComponent(encodedCode);
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(code).then(() => {
-      toast('✅ 自動入力コードをコピーしました！アドレスバーに貼り付けてください', 'success');
-    });
-  }
-  closeModal();
-  setTimeout(() => window.open(url, '_blank'), 300);
-}
-
-function copyText(btn, encoded) {
-  const text = decodeURIComponent(encoded);
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(text).then(() => {
-      btn.textContent = '✓ コピー済み';
-      btn.style.color = 'var(--success)';
-      setTimeout(() => { btn.textContent = '📋 コピー'; btn.style.color = 'var(--accent)'; }, 2000);
-    });
-  }
-}
-function getMsgForCompany(company) {
-  const descId = parseInt(document.getElementById('companyDescSel').value);
-  const pid = (company.patternId!=null) ? company.patternId : selPattern;
-  return buildMessage(pid, descId);
-}
-function getTargetCompanies() {
-  const checkedIds = [...document.querySelectorAll('.cchk:checked')].map(el => el.dataset.id);
-  return companies.filter(c => checkedIds.includes(c.id) && (c.url || c.email));
-}
-
-function confirmSend() {
-  const targets = getTargetCompanies();
-  if (!targets.length) return toast('配信対象の企業を選択してください', 'error');
-
-  if (sendMode === 'email') {
-    const noEmail = targets.filter(c => !c.email);
-    if (noEmail.length) return toast(noEmail.map(c=>c.name||'企業').join('、') + ' のメールアドレスを入力してください', 'error');
-    document.getElementById('mtitle').textContent='📧 メール送信確認';
-    document.getElementById('mbody').innerHTML=`以下の<strong>${targets.length}社</strong>にメールを送信します。<br><br>${targets.map(c=>`・${c.name||c.url}（${c.email}）`).join('<br>')}<br><br>⚠️ この操作は取り消せません。`;
-  } else {
-    const noUrl = targets.filter(c => !c.url);
-    if (noUrl.length) return toast(noUrl.map(c=>c.name||'企業').join('、') + ' のフォームURLを入力してください', 'error');
-    const sentTargets = targets.filter(c => c.sent);
-    let warning = '';
-    if (sentTargets.length) warning = `<br><br><span style="color:var(--warning)">⚠️ 送付済みが${sentTargets.length}社含まれています</span>`;
-    document.getElementById('mtitle').textContent='🚀 送信確認';
-    document.getElementById('mbody').innerHTML=`以下の<strong>${targets.length}社</strong>のフォームに送信します。<br><br>${targets.map(c=>`・${c.name||c.url}`).join('<br>')}${warning}<br><br>⚠️ この操作は取り消せません。`;
-  }
-  document.getElementById('modal').classList.add('active');
-}
-function closeModal(){
-  document.getElementById('modal').classList.remove('active');
-  // ボタンをデフォルトに戻す
-  document.querySelector('.mactions').innerHTML = `
-    <button class="btn btn-s" style="flex:1" onclick="closeModal()">キャンセル</button>
-    <button class="btn btn-d" style="flex:1" onclick="doSend()">送信する</button>`;
-  document.getElementById('mtitle').textContent = '⚠️ 送信確認';
-}
-async function doSend() {
-  closeModal();
-  const targets = getTargetCompanies();
-
-  if (sendMode === 'email') {
-    showLoader('メール送信中...','各企業にメールを送信しています...');
-    try {
-      const withMsg = targets.map(c=>({...c, msgContent: getMsgForCompany(c)}));
-      const r = await fetch(API+'/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companies:withMsg,senderInfo:getSenderInfo(),messageTemplate:{content:document.getElementById('msgEdit').value}})});
-      const d = await r.json();
-      hideLoader();
-      showResults(d.results);
-    } catch {
-      hideLoader();
-      toast('メール送信中にエラーが発生しました','error');
-    }
-    return;
-  }
-
-  showLoader('送信中...','各企業のフォームに送信しています...');
+$('auditForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  $('errorBox').classList.remove('on');
+  $('loading').classList.add('on');
+  $('runBtn').disabled = true;
   try {
-    const validWithMsg = targets.map(c=>({...c, msgContent: getMsgForCompany(c)}));
-    const r=await fetch(API+'/api/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companies:validWithMsg,senderInfo:getSenderInfo(),messageTemplate:{content:document.getElementById('msgEdit').value},selectedCompanyIds:targets.map(c=>c.id)})});
-    const d=await r.json();
-    hideLoader();
-    showResults(d.results);
-  } catch { hideLoader(); toast('送信中にエラーが発生しました','error'); }
-}
-function showResults(results) {
-  goStep(5);
-  const now = new Date();
-  const dateStr = now.getFullYear()+'/'+(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getDate().toString().padStart(2,'0');
-  results.forEach(r=>{
-    if (r.status==='submitted') {
-      const c = companies.find(c=>c.id===r.companyId);
-      if (c) { c.sent=true; c.sentAt=dateStr; }
-    }
-  });
-  saveCompanies();
-  const msgContent = document.getElementById('msgEdit').value;
-  document.getElementById('resultList').innerHTML=results.map(r=>{
-    const isManual = r.status==='manual_required';
-    const isError  = r.status==='error';
-    const isOk     = r.status==='submitted';
-    const badgeClass = isOk?'submitted':isManual?'manual':'error';
-    const badgeText  = isOk?'✓ 送信完了':isManual?'⚠️ 手動送信が必要':'エラー';
-    const url = r.url||'';
-    return `<div class="preview-item">
-      <div class="pitem-h"><div class="pname">${r.companyName}</div>
-      <span class="sbadge ${badgeClass}">${badgeText}</span></div>
-      <div class="pdetail">
-        <div style="margin-bottom:10px">${r.message||r.error||'正常に送信されました'}</div>
-        ${(isManual||isError)&&url
-          ? `<button class="manual-btn" onclick="openManual('${url}','${encodeURIComponent(msgContent)}')">🖐 手動送信（フォームを開く）</button>`
-          : ''}
-      </div>
-    </div>`;
-  }).join('');
-}
+    const response = await fetch('/api/aio-audit', {
+      method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ name:$('name').value, url:$('url').value, keywords:$('keywords').value })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || '診断に失敗しました。');
+    upsertHistory(data);
+    renderReport(data);
+  } catch (error) {
+    $('errorBox').textContent = error.message;
+    $('errorBox').classList.add('on');
+  } finally {
+    $('loading').classList.remove('on');
+    $('runBtn').disabled = false;
+  }
+});
 
-// ===== リセット =====
-function resetAll(){
-  selPattern=0;
-  renderPatterns(null);
-  updatePreview();
-  renderCompanies();
-  document.getElementById('summaryCard').style.display='none';
-  document.getElementById('previewArea').innerHTML='<p style="color:var(--muted);font-size:.85rem;text-align:center;padding:20px 0">「プレビュー取得」で各フォームを解析して入力状況を確認できます。</p>';
-  goStep(1);
-  toast('企業リストは保持しています','info');
-}
+$('sampleBtn').addEventListener('click', () => {
+  $('name').value = 'サンプルカフェ';
+  $('url').value = 'https://example.com';
+  $('keywords').value = '地域名 カフェ おすすめ\nカフェ 口コミ 評判\nカフェ 予約';
+});
+$('copyBtn').addEventListener('click', async () => {
+  if (!currentReport) return;
+  const text = `AIO診断：${currentReport.input.name}\n総合スコア：${currentReport.score}/100点（${currentReport.status}）\n不足キーワード：${currentReport.weakKeywords.join('、')}\n提案：${currentReport.recommendations.join(' / ')}`;
+  await navigator.clipboard.writeText(text);
+  $('copyBtn').textContent = 'コピーしました';
+  setTimeout(() => $('copyBtn').textContent = '要約をコピー', 1600);
+});
+$('deleteBtn').addEventListener('click', () => {
+  if (!currentReport) return;
+  saveHistory(loadHistory().filter((item) => item.id !== currentReport.id));
+  $('result').classList.remove('on');
+  currentReport = null;
+});
 
-// ===== UI =====
-function showLoader(t,s){document.getElementById('ltxt').textContent=t;document.getElementById('lsub').textContent=s;document.getElementById('loader').classList.add('active');}
-function hideLoader(){document.getElementById('loader').classList.remove('active');}
-function toast(msg,type='info'){const c=document.getElementById('toastC');const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;c.appendChild(t);setTimeout(()=>t.remove(),3500);}
-
-init();
+renderHistory();
 </script>
 </body>
 </html>
